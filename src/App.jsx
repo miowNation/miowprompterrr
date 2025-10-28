@@ -32,6 +32,10 @@ import {
   taskTypes,
   techniquesByTier,
   tiers,
+  tones,
+  focusOptions,
+  constraintOptions,
+  quickTemplates
 } from "./constants";
 const MiowNation = () => {
   const [inputPrompt, setInputPrompt] = useState("");
@@ -132,69 +136,6 @@ const MiowNation = () => {
     }
   }, [inputPrompt, settings, examples, variables, customCategories]);
 
-  const tones = [
-    "professional",
-    "casual",
-    "academic",
-    "creative",
-    "technical",
-    "friendly",
-    "authoritative",
-    "empathetic",
-  ];
-  const focusOptions = [
-    "Accuracy",
-    "Creativity",
-    "Speed",
-    "Detail",
-    "Simplicity",
-    "Depth",
-    "Originality",
-    "Practicality",
-  ];
-  const constraintOptions = [
-    "No assumptions",
-    "Be concise",
-    "Cite sources",
-    "Use examples",
-    "Be formal",
-    "Step-by-step",
-    "Avoid jargon",
-    "Use analogies",
-  ];
-
-  const quickTemplates = [
-    {
-      name: "Role-Playing Expert",
-      template:
-        "You are a [specific profession]. Your task is to [specific task]. Focus on [key considerations/style]. Begin by acknowledging your role.",
-      category: "Structure",
-    },
-    {
-      name: "Brainstorm & Categorize",
-      template:
-        "Brainstorm [number] creative ideas for [topic]. Categorize these ideas under [number] relevant headings, and for each idea, include a brief one-sentence description. Aim for variety and originality.",
-      category: "Ideation",
-    },
-    {
-      name: "Summarize & Extract",
-      template:
-        "Summarize the following text in [number] concise bullet points. Additionally, identify [number] key actionable takeaways that a [target audience] could implement immediately.",
-      category: "Analysis",
-    },
-    {
-      name: "Simplify & Explain",
-      template:
-        "Explain [complex concept] in simple terms suitable for someone with no prior knowledge, using analogies where helpful. Avoid jargon and focus on the practical implications or core idea. Then, provide one real-world example.",
-      category: "Teaching",
-    },
-    {
-      name: "Condense & Refine",
-      template:
-        "Refine the following text to be more [desired tone]. Ensure it appeals to a [target audience]. Highlight any significant changes you made and explain why.",
-      category: "Refinement",
-    },
-  ];
 
   const loadPresetMode = (modeId) => {
     const mode = presetModes.find((m) => m.id === modeId);
