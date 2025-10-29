@@ -21,6 +21,8 @@ import {
   Eye,
   Users,
   Cpu,
+  Moon,
+  Sun,
 } from "lucide-react";
 import {
   interestModes,
@@ -37,989 +39,282 @@ import {
   constraintOptions,
   quickTemplates
 } from "./constants";
+import { useMiowNationLogic } from "./useM";
+
 const MiowNation = () => {
-  const [inputPrompt, setInputPrompt] = useState("");
-  const [improvedPrompt, setImprovedPrompt] = useState("");
-  const [analysis, setAnalysis] = useState(null);
-  const [activeTab, setActiveTab] = useState("builder");
-  const [theme, setTheme] = useState("dark");
-  const fileInputRef = useRef(null);
+  const logic = useMiowNationLogic();
 
-  const [settings, setSettings] = useState({
-    tier: "tier3",
-    technique: "xml",
-    taskType: "general",
-    roleAssignment: "",
-    tone: "professional",
-    outputFormat: "structured",
-    useXML: true,
-    examples: [],
-    exampleCount: 2,
-    chainOfThought: false,
-    prefillResponse: "",
-    variables: [],
-    verification: false,
-    lengthTarget: "",
-    maxTokens: "",
-    language: "English",
-    focusAreas: ["Accuracy"],
-    constraints: ["Use examples"],
-    customInstructions: "",
-    reasoningMode: false,
-    reasoningSteps: "standard",
-    interestMode: "none",
-    perspectiveMode: "none",
-    personality: "none",
-    iqLevel: "130",
-    expertise: "expert",
-    age: "28",
-    background: "",
-  });
+  const {
+    inputPrompt,
+    setInputPrompt,
+    improvedPrompt,
+    setImprovedPrompt,
+    analysis,
+    activeTab,
+    setActiveTab,
+    theme,
+    setTheme,
+    fileInputRef,
+    settings,
+    setSettings,
+    examples,
+    setExamples,
+    newExample,
+    setNewExample,
+    variables,
+    setVariables,
+    newVariable,
+    setNewVariable,
+    customCategories,
+    setCustomCategories,
+    newCategory,
+    setNewCategory,
+    savedPrompts,
+    setSavedPrompts,
+    promptName,
+    setPromptName,
+    promptTags,
+    setPromptTags,
+    savedSearch,
+    setSavedSearch,
+    serializeState,
+    deserializeState,
+    loadPresetMode,
+    generatePromptByTechnique,
+    improvePrompt,
+    loadQuickTemplate,
+    addExample,
+    removeExample,
+    addVariable,
+    removeVariable,
+    addCategory,
+    removeCategory,
+    toggleFocus,
+    toggleConstraint,
+    savePrompt,
+    loadPrompt,
+    deletePrompt,
+    exportPrompt,
+    importPrompt,
+    resetAll,
+  } = logic;
 
-  const [examples, setExamples] = useState([]);
-  const [newExample, setNewExample] = useState({ input: "", output: "" });
-  const [variables, setVariables] = useState([]);
-  const [newVariable, setNewVariable] = useState({ name: "", description: "" });
-  const [customCategories, setCustomCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState("");
-  const [savedPrompts, setSavedPrompts] = useState([]);
-  const [promptName, setPromptName] = useState("");
-  const [promptTags, setPromptTags] = useState("");
-  const [savedSearch, setSavedSearch] = useState("");
-
-  // ---------- URL Share/Load ----------
-  const serializeState = () => {
-    const payload = {
-      inputPrompt,
-      settings,
-      examples,
-      variables,
-      customCategories,
-    };
-    try {
-      const json = JSON.stringify(payload);
-      return btoa(unescape(encodeURIComponent(json)));
-    } catch (e) {
-      return "";
+  // Theme configuration
+  const themes = {
+    dark: {
+      bg: "bg-gray-950",
+      card: "bg-gray-900",
+      cardHover: "hover:bg-gray-850",
+      border: "border-gray-800",
+      borderHover: "hover:border-gray-700",
+      text: "text-gray-100",
+      textSecondary: "text-gray-400",
+      textMuted: "text-gray-500",
+      input: "bg-gray-900 border-gray-800 text-gray-100 focus:border-gray-700",
+      button: "bg-gray-800 text-gray-100 hover:bg-gray-750",
+      buttonActive: "bg-gray-100 text-gray-900",
+      accent: "bg-gray-100 text-gray-900",
+      accentHover: "hover:bg-gray-200",
+      divider: "border-gray-800",
+    },
+    light: {
+      bg: "bg-gray-50",
+      card: "bg-white",
+      cardHover: "hover:bg-gray-50",
+      border: "border-gray-200",
+      borderHover: "hover:border-gray-300",
+      text: "text-gray-900",
+      textSecondary: "text-gray-600",
+      textMuted: "text-gray-500",
+      input: "bg-white border-gray-200 text-gray-900 focus:border-gray-400",
+      button: "bg-gray-100 text-gray-900 hover:bg-gray-200",
+      buttonActive: "bg-gray-900 text-gray-100",
+      accent: "bg-gray-900 text-gray-100",
+      accentHover: "hover:bg-gray-800",
+      divider: "border-gray-200",
     }
   };
 
-  const deserializeState = (hash) => {
-    try {
-      const json = decodeURIComponent(escape(atob(hash)));
-      const data = JSON.parse(json);
-      if (data.inputPrompt !== undefined) setInputPrompt(data.inputPrompt);
-      if (data.settings) setSettings((prev) => ({ ...prev, ...data.settings }));
-      if (Array.isArray(data.examples)) setExamples(data.examples);
-      if (Array.isArray(data.variables)) setVariables(data.variables);
-      if (Array.isArray(data.customCategories))
-        setCustomCategories(data.customCategories);
-    } catch (_) {
-      // silently ignore bad hashes
-    }
-  };
-
-  useEffect(() => {
-    if (location.hash.startsWith("#p=")) {
-      const hash = location.hash.slice(3);
-      deserializeState(hash);
-    }
-  }, []);
-
-  useEffect(() => {
-    const hash = serializeState();
-    if (hash) {
-      const newHash = `#p=${hash}`;
-      if (location.hash !== newHash) {
-        history.replaceState(null, "", newHash);
-      }
-    }
-  }, [inputPrompt, settings, examples, variables, customCategories]);
-
-
-  const loadPresetMode = (modeId) => {
-    const mode = presetModes.find((m) => m.id === modeId);
-    if (mode) {
-      setSettings({ ...settings, ...mode.config });
-    }
-  };
-
-  const generatePromptByTechnique = () => {
-    let prompt = "";
-
-    if (settings.personality !== "none") {
-      const persona = personalities.find((p) => p.id === settings.personality);
-      if (persona && persona.traits) {
-        prompt += `You are ${persona.name}, a ${persona.age}-year-old with an IQ of ${persona.iq}.\n\n`;
-        prompt += `CHARACTER TRAITS: ${persona.traits}\n\n`;
-        prompt += `EXPERTISE: ${persona.expertise}\n\n`;
-        prompt += `COMMUNICATION RULES: ${persona.rules}\n\n`;
-        prompt += `Maintain consistency as ${persona.name} throughout the conversation.\n\n`;
-      }
-    } else if (settings.roleAssignment) {
-      const role = settings.roleAssignment;
-      const article = ["a", "e", "i", "o", "u"].some((v) =>
-        role.toLowerCase().startsWith(v)
-      )
-        ? "an"
-        : "a";
-
-      prompt += `You are ${article} ${role}`;
-
-      if (settings.iqLevel && parseInt(settings.iqLevel) > 100) {
-        prompt += ` with an IQ of ${settings.iqLevel}`;
-      }
-
-      if (settings.age) {
-        prompt += `, age ${settings.age}`;
-      }
-
-      if (settings.expertise && settings.expertise !== "expert") {
-        prompt += `, recognized as a ${settings.expertise}`;
-      }
-
-      if (settings.background) {
-        prompt += `. ${settings.background}`;
-      }
-
-      prompt += ".\n";
-
-      if (settings.perspectiveMode === "10years") {
-        prompt += `You have 10+ years of experience in your field. `;
-      } else if (settings.perspectiveMode === "beginner") {
-        prompt += `Explain everything as if to someone with no prior knowledge. `;
-      } else if (settings.perspectiveMode === "skeptic") {
-        prompt += `Approach this with a critical, questioning mindset. Challenge assumptions. `;
-      } else if (settings.perspectiveMode === "optimist") {
-        prompt += `Approach this with an optimistic, visionary perspective. `;
-      }
-
-      prompt += "Begin by acknowledging your role.\n";
-    }
-
-    if (settings.interestMode !== "none") {
-      const mode = interestModes.find((m) => m.id === settings.interestMode);
-      if (mode && mode.prefix) {
-        prompt += `\n${mode.prefix}:\n`;
-      }
-    }
-
-    if (settings.tone !== "professional") {
-      prompt += `\nUse a ${settings.tone} tone.\n`;
-    }
-
-    if (settings.language !== "English") {
-      prompt += `Respond in ${settings.language}.\n`;
-    }
-
-    prompt += "\n";
-
-    if (settings.reasoningMode) {
-      const template = reasoningTemplates[settings.reasoningSteps];
-      prompt += `Before answering, work through this step-by-step:\n\n`;
-      template.steps.forEach((step, i) => {
-        prompt += `${i + 1}. ${step}\n`;
-      });
-      prompt += "\n";
-    }
-
-    if (settings.useXML) {
-      prompt += `<task>\n${inputPrompt}\n</task>\n\n`;
-    } else {
-      prompt += `### TASK\n${inputPrompt}\n\n`;
-    }
-
-    if (settings.taskType === "classification" && customCategories.length > 0) {
-      if (settings.useXML) {
-        prompt += `<categories>\n`;
-        customCategories.forEach((cat, i) => {
-          prompt += `<category id="${String.fromCharCode(
-            65 + i
-          )}">${cat}</category>\n`;
-        });
-        prompt += `</categories>\n\n`;
-      } else {
-        prompt += `### CATEGORIES\n`;
-        customCategories.forEach((cat, i) => {
-          prompt += `${String.fromCharCode(65 + i)}) ${cat}\n`;
-        });
-        prompt += "\n";
-      }
-    }
-
-    if (variables.length > 0 && settings.technique === "variables") {
-      if (settings.useXML) {
-        prompt += `<variables>\n`;
-        variables.forEach((v) => {
-          prompt += `<var name="{${v.name}}">${v.description}</var>\n`;
-        });
-        prompt += `</variables>\n\n`;
-      } else {
-        prompt += `### VARIABLES\n`;
-        variables.forEach((v) => {
-          prompt += `- {${v.name}}: ${v.description}\n`;
-        });
-        prompt += "\n";
-      }
-    }
-
-    if (settings.chainOfThought && !settings.reasoningMode) {
-      if (settings.useXML) {
-        prompt += `<thinking>\nThink through this step by step:\n`;
-        prompt += `1. Analyze the input carefully\n`;
-        prompt += `2. Consider all relevant information\n`;
-        prompt += `3. Reason through the problem\n`;
-        prompt += `4. Form your conclusion\n`;
-        prompt += `</thinking>\n\n`;
-      } else {
-        prompt += `### REASONING\nThink step by step:\n`;
-        prompt += `1. Analyze the input\n2. Consider context\n3. Form conclusion\n\n`;
-      }
-    }
-
-    if (examples.length > 0 && settings.technique === "fewshot") {
-      if (settings.useXML) {
-        prompt += `<examples>\n`;
-        examples.slice(0, settings.exampleCount).forEach((ex) => {
-          prompt += `<example>\n`;
-          prompt += `<input>${ex.input}</input>\n`;
-          prompt += `<output>${ex.output}</output>\n`;
-          prompt += `</example>\n`;
-        });
-        prompt += `</examples>\n\n`;
-      } else {
-        prompt += `### EXAMPLES\n`;
-        examples.slice(0, settings.exampleCount).forEach((ex, i) => {
-          prompt += `Example ${i + 1}:\nInput: ${ex.input}\nOutput: ${
-            ex.output
-          }\n\n`;
-        });
-      }
-    }
-
-    if (settings.focusAreas.length > 0) {
-      if (settings.useXML) {
-        prompt += `<focus_areas>\n`;
-        settings.focusAreas.forEach((f) => (prompt += `<focus>${f}</focus>\n`));
-        prompt += `</focus_areas>\n\n`;
-      } else {
-        prompt += `### FOCUS AREAS\n`;
-        settings.focusAreas.forEach((f) => (prompt += `- ${f}\n`));
-        prompt += "\n";
-      }
-    }
-
-    if (settings.constraints.length > 0) {
-      if (settings.useXML) {
-        prompt += `<constraints>\n`;
-        settings.constraints.forEach(
-          (c) => (prompt += `<constraint>${c}</constraint>\n`)
-        );
-        prompt += `</constraints>\n\n`;
-      } else {
-        prompt += `### CONSTRAINTS\n`;
-        settings.constraints.forEach((c) => (prompt += `- ${c}\n`));
-        prompt += "\n";
-      }
-    }
-
-    if (settings.customInstructions.trim()) {
-      if (settings.useXML) {
-        prompt += `<instructions>\n${settings.customInstructions}\n</instructions>\n\n`;
-      } else {
-        prompt += `### INSTRUCTIONS\n${settings.customInstructions}\n\n`;
-      }
-    }
-
-    if (settings.outputFormat === "structured") {
-      if (settings.useXML) {
-        prompt += `<output_format>\nProvide response in clear, structured format.\n</output_format>\n\n`;
-      } else {
-        prompt += `### OUTPUT FORMAT\nStructured and organized response.\n\n`;
-      }
-    } else if (settings.outputFormat === "minimal") {
-      prompt += `Respond with ONLY the answer, no extra words.\n\n`;
-    } else if (settings.outputFormat === "detailed") {
-      prompt += `Provide a comprehensive, detailed response with full explanations.\n\n`;
-    }
-
-    if (settings.lengthTarget) {
-      prompt += `Target length: ${settings.lengthTarget} words.\n`;
-    }
-    if (settings.maxTokens) {
-      prompt += `Maximum tokens: ${settings.maxTokens}.\n`;
-    }
-    if (settings.lengthTarget || settings.maxTokens) {
-      prompt += "\n";
-    }
-
-    if (settings.verification) {
-      if (settings.useXML) {
-        prompt += `<verification>\nBefore answering:\n`;
-        prompt += `1. Verify you have sufficient information\n`;
-        prompt += `2. Check your reasoning is sound\n`;
-        prompt += `3. If uncertain, acknowledge it clearly\n`;
-        prompt += `</verification>\n\n`;
-      } else {
-        prompt += `### VERIFICATION\nVerify information and reasoning before responding.\n\n`;
-      }
-    }
-
-    if (settings.technique === "evidence") {
-      prompt += `### RESPONSE FORMAT\n`;
-      prompt += `1. Quote relevant information\n`;
-      prompt += `2. Explain your reasoning\n`;
-      prompt += `3. Provide your answer\n\n`;
-    }
-
-    if (settings.taskType === "brainstorm") {
-      prompt += `Categorize ideas under relevant headings with brief descriptions. Aim for variety and originality.\n\n`;
-    }
-
-    if (
-      settings.interestMode !== "none" &&
-      settings.interestMode !== "nature"
-    ) {
-      prompt += `Finally, conclude with: "What does this reveal about human nature?"\n\n`;
-    }
-
-    if (settings.prefillResponse && settings.prefillResponse.trim()) {
-      prompt += `---\n\nASSISTANT RESPONSE:\n${settings.prefillResponse}`;
-    }
-
-    return prompt;
-  };
-
-  const improvePrompt = () => {
-    if (!inputPrompt.trim()) return;
-
-    const improved = generatePromptByTechnique();
-    setImprovedPrompt(improved);
-
-    const tierNum = parseInt(settings.tier.replace("tier", ""));
-    const baseScore = tierNum * 12 + 30;
-
-    let bonusScore = 0;
-    if (settings.roleAssignment || settings.taskType !== "general")
-      bonusScore += 8;
-    if (settings.chainOfThought) bonusScore += 10;
-    if (settings.reasoningMode) bonusScore += 12;
-    if (examples.length > 0) bonusScore += 12;
-    if (settings.verification) bonusScore += 10;
-    if (settings.prefillResponse) bonusScore += 5;
-    if (variables.length > 0) bonusScore += 6;
-    if (settings.focusAreas.length > 0) bonusScore += 4;
-    if (settings.constraints.length > 0) bonusScore += 5;
-    if (settings.customInstructions.trim()) bonusScore += 5;
-    if (settings.useXML) bonusScore += 5;
-    if (settings.interestMode !== "none") bonusScore += 6;
-    if (settings.perspectiveMode !== "none") bonusScore += 4;
-    if (settings.personality !== "none") bonusScore += 10;
-    if (parseInt(settings.iqLevel) >= 140) bonusScore += 8;
-
-    const score = Math.min(baseScore + bonusScore, 100);
-
-    const features = [];
-    features.push(`Tier ${tierNum}`);
-    if (settings.roleAssignment) features.push("Custom Role");
-    if (settings.personality !== "none") features.push("Personality");
-    if (settings.reasoningMode) features.push("Advanced Reasoning");
-    if (settings.chainOfThought) features.push("CoT");
-    if (examples.length > 0) features.push(`${examples.length} Examples`);
-    if (settings.verification) features.push("Verification");
-    if (settings.prefillResponse) features.push("Prefill");
-    if (variables.length > 0) features.push(`${variables.length} Variables`);
-    if (settings.focusAreas.length > 0)
-      features.push(`${settings.focusAreas.length} Focus Areas`);
-    if (settings.constraints.length > 0)
-      features.push(`${settings.constraints.length} Constraints`);
-    if (settings.interestMode !== "none") features.push("Interest Mode");
-    if (settings.perspectiveMode !== "none") features.push("Perspective");
-    if (parseInt(settings.iqLevel) >= 140) features.push("High IQ");
-
-    setAnalysis({
-      score,
-      features,
-      tier: settings.tier,
-      technique: settings.technique,
-      wordCount: improved.split(/\s+/).length,
-      characterCount: improved.length,
-    });
-  };
-
-  const loadQuickTemplate = (template) => {
-    setInputPrompt(template);
-  };
-
-  const addExample = () => {
-    if (newExample.input.trim() && newExample.output.trim()) {
-      setExamples([...examples, newExample]);
-      setNewExample({ input: "", output: "" });
-    }
-  };
-
-  const removeExample = (idx) => {
-    setExamples(examples.filter((_, i) => i !== idx));
-  };
-
-  const addVariable = () => {
-    if (newVariable.name.trim() && newVariable.description.trim()) {
-      setVariables([...variables, newVariable]);
-      setNewVariable({ name: "", description: "" });
-    }
-  };
-
-  const removeVariable = (idx) => {
-    setVariables(variables.filter((_, i) => i !== idx));
-  };
-
-  const addCategory = () => {
-    if (newCategory.trim()) {
-      setCustomCategories([...customCategories, newCategory.trim()]);
-      setNewCategory("");
-    }
-  };
-
-  const removeCategory = (idx) => {
-    setCustomCategories(customCategories.filter((_, i) => i !== idx));
-  };
-
-  const toggleFocus = (focus) => {
-    const updated = settings.focusAreas.includes(focus)
-      ? settings.focusAreas.filter((f) => f !== focus)
-      : [...settings.focusAreas, focus];
-    setSettings({ ...settings, focusAreas: updated });
-  };
-
-  const toggleConstraint = (constraint) => {
-    const updated = settings.constraints.includes(constraint)
-      ? settings.constraints.filter((c) => c !== constraint)
-      : [...settings.constraints, constraint];
-    setSettings({ ...settings, constraints: updated });
-  };
-
-  const savePrompt = () => {
-    if (!promptName.trim()) {
-      alert("Please enter a prompt name");
-      return;
-    }
-    const saved = {
-      id: Date.now(),
-      name: promptName,
-      timestamp: new Date().toLocaleString(),
-      input: inputPrompt,
-      improved: improvedPrompt,
-      settings: settings,
-      examples: examples,
-      variables: variables,
-      categories: customCategories,
-      tags: promptTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0),
-    };
-    setSavedPrompts([...savedPrompts, saved]);
-    setPromptName("");
-    setPromptTags("");
-  };
-
-  const loadPrompt = (saved) => {
-    setInputPrompt(saved.input);
-    setImprovedPrompt(saved.improved);
-    setSettings(saved.settings);
-    setExamples(saved.examples || []);
-    setVariables(saved.variables || []);
-    setCustomCategories(saved.categories || []);
-  };
-
-  const deletePrompt = (id) => {
-    setSavedPrompts(savedPrompts.filter((p) => p.id !== id));
-  };
-
-  const exportPrompt = (format = "json") => {
-    const data = {
-      input: inputPrompt,
-      improved: improvedPrompt,
-      settings: settings,
-      examples: examples,
-      variables: variables,
-      categories: customCategories,
-      timestamp: new Date().toISOString(),
-      shareUrl: location.href,
-    };
-
-    if (format === "json") {
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `miownation-prompt-${Date.now()}.json`;
-      a.click();
-      return;
-    }
-
-    if (format === "md") {
-      const md = `# MiowNation Prompt\n\n**Saved:** ${data.timestamp}\n\n## Input\n\n\n${data.input}\n\n## Optimized\n\n\n${data.improved}\n\n## Settings\n\n\n\`${JSON.stringify(data.settings)}\`\n\n## Examples\n\n\n\`${JSON.stringify(data.examples)}\`\n\n## Variables\n\n\n\`${JSON.stringify(data.variables)}\`\n\n## Categories\n\n\n\`${JSON.stringify(data.categories)}\`\n\n## Share URL\n\n${data.shareUrl}\n`;
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `miownation-prompt-${Date.now()}.md`;
-      a.click();
-      return;
-    }
-
-    if (format === "txt") {
-      const txt = `INPUT\n\n${data.input}\n\n---\n\nOPTIMIZED\n\n${data.improved}\n\n---\n\nSETTINGS: ${JSON.stringify(
-        data.settings
-      )}\nEXAMPLES: ${JSON.stringify(data.examples)}\nVARIABLES: ${JSON.stringify(
-        data.variables
-      )}\nCATEGORIES: ${JSON.stringify(
-        data.categories
-      )}\nURL: ${data.shareUrl}\n`;
-      const blob = new Blob([txt], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `miownation-prompt-${Date.now()}.txt`;
-      a.click();
-      return;
-    }
-  };
-
-  const importPrompt = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        setInputPrompt(data.input || data.original || "");
-        setImprovedPrompt(data.improved || "");
-        if (data.settings) setSettings({ ...settings, ...data.settings });
-        if (data.examples) setExamples(data.examples);
-        if (data.variables) setVariables(data.variables);
-        if (data.categories) setCustomCategories(data.categories);
-      } catch (error) {
-        alert("Error importing file: " + error.message);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const resetAll = () => {
-    setInputPrompt("");
-    setImprovedPrompt("");
-    setAnalysis(null);
-    setExamples([]);
-    setVariables([]);
-    setCustomCategories([]);
-    setSettings({
-      tier: "tier3",
-      technique: "xml",
-      taskType: "general",
-      roleAssignment: "",
-      tone: "professional",
-      outputFormat: "structured",
-      useXML: true,
-      examples: [],
-      exampleCount: 2,
-      chainOfThought: false,
-      prefillResponse: "",
-      variables: [],
-      verification: false,
-      lengthTarget: "",
-      maxTokens: "",
-      language: "English",
-      focusAreas: ["Accuracy"],
-      constraints: ["Use examples"],
-      customInstructions: "",
-      reasoningMode: false,
-      reasoningSteps: "standard",
-      interestMode: "none",
-      perspectiveMode: "none",
-      personality: "none",
-      iqLevel: "130",
-      expertise: "expert",
-      age: "28",
-      background: "",
-    });
-  };
+  const t = themes[theme];
 
   return (
-    <div className={`min-h-screen p-4 ${
-      theme === "dark"
-        ? "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"
-        : "bg-gradient-to-br from-slate-100 via-purple-100 to-slate-100"
-    }`}>
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center mb-3">
-            <Wand2 className="w-12 h-12 text-purple-400 mr-3 animate-pulse" />
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-              MiowNation
-            </h1>
+    <div className={`min-h-screen transition-colors duration-200 ${t.bg} ${t.text}`}>
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Wand2 className="w-8 h-8" />
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">MiowNation</h1>
+                <p className={`text-sm ${t.textSecondary}`}>Prompt Engineering Studio</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className={`p-2 rounded-lg transition-colors ${t.button}`}
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={resetAll}
+                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.button}`}
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => {
+                  const hash = serializeState();
+                  navigator.clipboard.writeText(`${location.origin}${location.pathname}#p=${hash}`);
+                  alert("Shareable URL copied!");
+                }}
+                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.button}`}
+              >
+                Share
+              </button>
+            </div>
           </div>
-          <p className="text-gray-300 text-lg">
-            Master Prompt Engineering Studio
-          </p>
-          <p className="text-gray-400 text-sm">
-            Advanced techniques • Personality injection • IQ amplification •
-            Interest modes
-          </p>
-          <div className="flex items-center justify-center gap-2 mt-3">
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="px-3 py-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 text-sm"
-            >
-              Toggle {theme === "dark" ? "Light" : "Dark"} Theme
-            </button>
-            <button
-              onClick={resetAll}
-              className="px-3 py-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 text-sm"
-            >
-              Reset All
-            </button>
-            <button
-              onClick={() => {
-                const hash = serializeState();
-                navigator.clipboard.writeText(`${location.origin}${location.pathname}#p=${hash}`);
-                alert("Shareable URL copied!");
-              }}
-              className="px-3 py-2 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 text-sm"
-            >
-              Copy Share URL
-            </button>
+
+          {/* Tabs */}
+          <div className={`flex gap-1 p-1 rounded-lg border ${t.border} ${t.card}`}>
+            {[
+              { id: "presets", label: "Presets", icon: Cpu },
+              { id: "builder", label: "Builder", icon: Layers },
+              { id: "templates", label: "Templates", icon: Sparkles },
+              { id: "guide", label: "Guide", icon: Book },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    activeTab === tab.id ? t.buttonActive : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 inline mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6 bg-gray-800 rounded-lg shadow-xl p-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab("presets")}
-            className={`px-6 py-3 rounded-lg font-semibold flex items-center transition whitespace-nowrap ${
-              activeTab === "presets"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <Cpu className="w-5 h-5 mr-2" /> Preset Modes
-          </button>
-          <button
-            onClick={() => setActiveTab("builder")}
-            className={`px-6 py-3 rounded-lg font-semibold flex items-center transition whitespace-nowrap ${
-              activeTab === "builder"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <Layers className="w-5 h-5 mr-2" /> Builder
-          </button>
-          <button
-            onClick={() => setActiveTab("templates")}
-            className={`px-6 py-3 rounded-lg font-semibold flex items-center transition whitespace-nowrap ${
-              activeTab === "templates"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <Sparkles className="w-5 h-5 mr-2" /> Quick Templates
-          </button>
-          <button
-            onClick={() => setActiveTab("guide")}
-            className={`px-6 py-3 rounded-lg font-semibold flex items-center transition whitespace-nowrap ${
-              activeTab === "guide"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <Book className="w-5 h-5 mr-2" /> Learning Guide
-          </button>
-        </div>
-
+        {/* Presets Tab */}
         {activeTab === "presets" && (
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 className="text-3xl font-bold mb-6 text-purple-300">
-              ⚡ Quick Start Presets
-            </h2>
-            <p className="text-gray-400 mb-6">
-              Load pre-configured modes optimized for specific use cases
+          <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
+            <h2 className="text-xl font-semibold mb-2">Quick Start Presets</h2>
+            <p className={`${t.textSecondary} text-sm mb-6`}>
+              Pre-configured modes optimized for specific use cases
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {presetModes.map((mode) => (
                 <div
                   key={mode.id}
-                  className="bg-gray-700 rounded-lg p-5 hover:bg-gray-650 transition border-2 border-gray-600 hover:border-purple-500"
+                  className={`border ${t.border} rounded-lg p-4 transition-colors ${t.cardHover}`}
                 >
-                  <h3 className="font-bold text-purple-300 text-lg mb-2">
-                    {mode.name}
-                  </h3>
-                  <p className="text-gray-300 text-sm mb-4">{mode.desc}</p>
+                  <h3 className="font-semibold mb-2">{mode.name}</h3>
+                  <p className={`text-sm ${t.textSecondary} mb-4`}>{mode.desc}</p>
                   <button
                     onClick={() => loadPresetMode(mode.id)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition"
+                    className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
                   >
                     Load Preset
                   </button>
                 </div>
               ))}
             </div>
-
-            <div className="mt-8 bg-purple-900 border-l-4 border-purple-500 p-5 rounded-lg">
-              <h3 className="font-bold mb-3 text-purple-200 text-lg">
-                💡 Preset Features
-              </h3>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  ✅ <strong>Instant Configuration:</strong> All settings
-                  pre-optimized for specific tasks
-                </li>
-                <li>
-                  ✅ <strong>Best Practices:</strong> Based on proven prompt
-                  engineering techniques
-                </li>
-                <li>
-                  ✅ <strong>Customize Further:</strong> Use as starting point
-                  and adjust as needed
-                </li>
-                <li>
-                  ✅ <strong>Save Time:</strong> Skip manual configuration for
-                  common scenarios
-                </li>
-              </ul>
-            </div>
           </div>
         )}
 
+        {/* Templates Tab */}
         {activeTab === "templates" && (
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            <h2 className="text-3xl font-bold mb-6 text-purple-300">
-              ⚡ Battle-Tested Templates
-            </h2>
-            <p className="text-gray-400 mb-6">
-              These proven prompt structures consistently deliver exceptional
-              results
+          <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
+            <h2 className="text-xl font-semibold mb-2">Quick Templates</h2>
+            <p className={`${t.textSecondary} text-sm mb-6`}>
+              Proven prompt structures for exceptional results
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {quickTemplates.map((template, i) => (
                 <div
                   key={i}
-                  className="bg-gray-700 rounded-lg p-4 hover:bg-gray-650 transition"
+                  className={`border ${t.border} rounded-lg p-4 transition-colors ${t.cardHover}`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-purple-300">
-                      {template.name}
-                    </h3>
-                    <span className="text-xs bg-purple-900 text-purple-300 px-2 py-1 rounded">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold">{template.name}</h3>
+                    <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'} ${t.textSecondary}`}>
                       {template.category}
                     </span>
                   </div>
-                  <p className="text-gray-300 text-sm mb-3 font-mono">
+                  <p className={`text-sm font-mono ${t.textSecondary} mb-3`}>
                     {template.template}
                   </p>
                   <button
                     onClick={() => loadQuickTemplate(template.template)}
-                    className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition text-sm"
+                    className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
                   >
                     Load Template
                   </button>
                 </div>
               ))}
             </div>
-
-            <div className="mt-8 bg-purple-900 border-l-4 border-purple-500 p-5 rounded-lg">
-              <h3 className="font-bold mb-3 text-purple-200 text-lg">
-                💡 Pro Tips
-              </h3>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  ✅ <strong>Be Specific:</strong> Replace brackets with exact
-                  details for best results
-                </li>
-                <li>
-                  ✅ <strong>Context Matters:</strong> Add relevant background
-                  information
-                </li>
-                <li>
-                  ✅ <strong>Iterate:</strong> Test and refine based on outputs
-                </li>
-                <li>
-                  ✅ <strong>Combine:</strong> Mix techniques for complex tasks
-                </li>
-              </ul>
-            </div>
           </div>
         )}
 
+        {/* Guide Tab */}
         {activeTab === "guide" && (
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-6 max-h-[70vh] overflow-y-auto">
-            <h2 className="text-3xl font-bold mb-6 text-purple-300">
-              📚 Prompt Engineering Mastery
-            </h2>
+          <div className={`${t.card} rounded-lg border ${t.border} p-6 max-h-[70vh] overflow-y-auto`}>
+            <h2 className="text-xl font-semibold mb-6">Prompt Engineering Guide</h2>
 
             {tiers.map((tier) => (
-              <div
-                key={tier.id}
-                className={`border-l-4 ${tier.color} bg-gray-700 p-5 mb-5 rounded-lg`}
-              >
-                <h3 className="text-xl font-bold text-white mb-3">
+              <div key={tier.id} className={`border-l-2 ${t.border} pl-4 mb-6`}>
+                <h3 className="text-lg font-semibold mb-3">
                   {tier.label} - {tier.desc}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {techniquesByTier[tier.id].map((tech) => (
-                    <div key={tech.id} className="bg-gray-600 p-3 rounded-lg">
-                      <div className="font-semibold text-purple-300">
-                        {tech.label}
-                      </div>
-                      <div className="text-gray-300 text-sm">{tech.desc}</div>
+                    <div key={tech.id} className={`border ${t.border} rounded p-3`}>
+                      <div className="font-medium text-sm mb-1">{tech.label}</div>
+                      <div className={`text-xs ${t.textSecondary}`}>{tech.desc}</div>
                     </div>
                   ))}
                 </div>
               </div>
             ))}
 
-            <div className="bg-purple-900 border-l-4 border-purple-500 p-5 mt-6 rounded-lg">
-              <h3 className="font-bold mb-3 text-purple-200 text-lg">
-                💡 Master Principles
-              </h3>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  ✅ <strong>Clarity:</strong> Be specific and unambiguous about
-                  your requirements
-                </li>
-                <li>
-                  ✅ <strong>Structure:</strong> Use XML tags to organize
-                  complex information
-                </li>
-                <li>
-                  ✅ <strong>Verification:</strong> Request reasoning and
-                  evidence for accuracy
-                </li>
-                <li>
-                  ✅ <strong>Examples:</strong> Few-shot learning often beats
-                  lengthy explanations
-                </li>
-                <li>
-                  ✅ <strong>Iteration:</strong> Systematically refine by
-                  removing unnecessary words
-                </li>
-                <li>
-                  ✅ <strong>Context:</strong> Provide sufficient background
-                  without overloading
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-blue-900 border-l-4 border-blue-500 p-5 mt-6 rounded-lg">
-              <h3 className="font-bold mb-3 text-blue-200 text-lg">
-                🧠 IQ Injection Technique
-              </h3>
-              <p className="text-gray-300 text-sm mb-3">
-                Assigning a high IQ to the AI persona significantly improves
-                response quality. Higher IQ values (140+) trigger more
-                sophisticated reasoning patterns.
-              </p>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  ✅ <strong>130-139:</strong> Highly intelligent, excellent
-                  analytical abilities
-                </li>
-                <li>
-                  ✅ <strong>140-149:</strong> Genius-level insights,
-                  exceptional problem-solving
-                </li>
-                <li>
-                  ✅ <strong>150+:</strong> Maximum cognitive depth,
-                  unprecedented creativity
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-pink-900 border-l-4 border-pink-500 p-5 mt-6 rounded-lg">
-              <h3 className="font-bold mb-3 text-pink-200 text-lg">
-                ✨ Interest Amplification
-              </h3>
-              <p className="text-gray-300 text-sm mb-3">
-                Transform boring topics into fascinating explorations by adding
-                unique perspectives:
-              </p>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  🔍 <strong>Hidden Story:</strong> Uncover the intrigue behind
-                  mundane topics
-                </li>
-                <li>
-                  👽 <strong>Alien Perspective:</strong> See familiar things
-                  with fresh eyes
-                </li>
-                <li>
-                  🕵️ <strong>Connect the Dots:</strong> Reveal hidden patterns
-                  and dynamics
-                </li>
-                <li>
-                  🧬 <strong>Survival Angle:</strong> Connect everything to
-                  evolutionary relevance
-                </li>
-                <li>
-                  🚀 <strong>Logical Extreme:</strong> Push ideas to their
-                  breaking point
-                </li>
-                <li>
-                  🧠 <strong>Human Nature:</strong> Discover what topics reveal
-                  about us
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-green-900 border-l-4 border-green-500 p-5 mt-6 rounded-lg">
-              <h3 className="font-bold mb-3 text-green-200 text-lg">
-                👥 Personality Injection
-              </h3>
-              <p className="text-gray-300 text-sm mb-3">
-                12 expert personalities with distinct traits, communication
-                styles, and specialized knowledge domains. Each personality has
-                been carefully crafted with specific IQ levels, ages, and
-                expertise areas.
-              </p>
-              <ul className="text-sm space-y-2 text-gray-300">
-                <li>
-                  ✅ <strong>Consistent Voice:</strong> Maintains character
-                  throughout conversation
-                </li>
-                <li>
-                  ✅ <strong>Domain Expertise:</strong> Deep knowledge in
-                  specialized areas
-                </li>
-                <li>
-                  ✅ <strong>Communication Rules:</strong> Distinct styles and
-                  constraints
-                </li>
-                <li>
-                  ✅ <strong>Authentic Responses:</strong> Feel like talking to
-                  a real expert
-                </li>
+            <div className={`border-l-2 ${t.border} pl-4 mt-6`}>
+              <h3 className="font-semibold mb-3">Master Principles</h3>
+              <ul className={`text-sm ${t.textSecondary} space-y-2`}>
+                <li>• <strong>Clarity:</strong> Be specific and unambiguous</li>
+                <li>• <strong>Structure:</strong> Use XML tags for organization</li>
+                <li>• <strong>Verification:</strong> Request reasoning and evidence</li>
+                <li>• <strong>Examples:</strong> Few-shot learning is powerful</li>
+                <li>• <strong>Iteration:</strong> Systematically refine prompts</li>
               </ul>
             </div>
           </div>
         )}
 
+        {/* Builder Tab */}
         {activeTab === "builder" && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Sidebar */}
             <div className="lg:col-span-1 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4 border-2 border-pink-500">
-                <h3 className="font-bold text-pink-300 mb-3 flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
+              {/* Personality */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 flex items-center text-sm">
+                  <Users className="w-4 h-4 mr-2" />
                   Personality
                 </h3>
                 <select
                   value={settings.personality}
-                  onChange={(e) =>
-                    setSettings({ ...settings, personality: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  onChange={(e) => setSettings({ ...settings, personality: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
                   {personalities.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -1028,19 +323,17 @@ const MiowNation = () => {
                   ))}
                 </select>
                 {settings.personality !== "none" && (
-                  <div className="text-xs text-gray-400 mt-2">
-                    {
-                      personalities.find((p) => p.id === settings.personality)
-                        ?.desc
-                    }
-                  </div>
+                  <p className={`text-xs ${t.textMuted} mt-2`}>
+                    {personalities.find((p) => p.id === settings.personality)?.desc}
+                  </p>
                 )}
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3 flex items-center">
-                  <Target className="w-5 h-5 mr-2" />
-                  Select Tier
+              {/* Tier Selection */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm flex items-center">
+                  <Target className="w-4 h-4 mr-2" />
+                  Tier
                 </h3>
                 <div className="space-y-2">
                   {tiers.map((tier) => (
@@ -1053,34 +346,26 @@ const MiowNation = () => {
                           technique: techniquesByTier[tier.id][0].id,
                         })
                       }
-                      className={`w-full p-3 rounded-lg text-left font-semibold transition ${
-                        settings.tier === tier.id
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      className={`w-full p-2 rounded-lg text-left text-sm font-medium transition-colors ${
+                        settings.tier === tier.id ? t.buttonActive : t.button
                       }`}
                     >
                       {tier.label}
-                      <div className="text-xs font-normal opacity-75 mt-1">
-                        {tier.desc}
-                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">🔧 Technique</h3>
-                <div className="space-y-2">
+              {/* Technique */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Technique</h3>
+                <div className="space-y-1">
                   {techniquesByTier[settings.tier].map((tech) => (
                     <button
                       key={tech.id}
-                      onClick={() =>
-                        setSettings({ ...settings, technique: tech.id })
-                      }
-                      className={`w-full p-2 rounded-lg text-left text-sm transition ${
-                        settings.technique === tech.id
-                          ? "bg-purple-600 text-white"
-                          : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      onClick={() => setSettings({ ...settings, technique: tech.id })}
+                      className={`w-full p-2 rounded-lg text-left text-sm transition-colors ${
+                        settings.technique === tech.id ? t.buttonActive : t.button
                       }`}
                     >
                       {tech.label}
@@ -1089,20 +374,18 @@ const MiowNation = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4 border-2 border-blue-500">
-                <h3 className="font-bold text-blue-300 mb-3 flex items-center">
-                  <Brain className="w-5 h-5 mr-2" />
-                  Reasoning Mode
+              {/* Reasoning Mode */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm flex items-center">
+                  <Brain className="w-4 h-4 mr-2" />
+                  Reasoning
                 </h3>
-                <label className="flex items-center text-sm text-gray-300 mb-3">
+                <label className={`flex items-center text-sm ${t.textSecondary} mb-3`}>
                   <input
                     type="checkbox"
                     checked={settings.reasoningMode}
                     onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        reasoningMode: e.target.checked,
-                      })
+                      setSettings({ ...settings, reasoningMode: e.target.checked })
                     }
                     className="mr-2"
                   />
@@ -1112,38 +395,30 @@ const MiowNation = () => {
                   <select
                     value={settings.reasoningSteps}
                     onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        reasoningSteps: e.target.value,
-                      })
+                      setSettings({ ...settings, reasoningSteps: e.target.value })
                     }
-                    className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                    className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                   >
-                    {Object.entries(reasoningTemplates).map(
-                      ([key, template]) => (
-                        <option key={key} value={key}>
-                          {template.name}
-                        </option>
-                      )
-                    )}
+                    {Object.entries(reasoningTemplates).map(([key, template]) => (
+                      <option key={key} value={key}>
+                        {template.name}
+                      </option>
+                    ))}
                   </select>
                 )}
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4 border-2 border-pink-500">
-                <h3 className="font-bold text-pink-300 mb-3 flex items-center">
-                  <Eye className="w-5 h-5 mr-2" />
+              {/* Interest Amplifier */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm flex items-center">
+                  <Eye className="w-4 h-4 mr-2" />
                   Interest Amplifier
                 </h3>
-                <label className="block text-sm font-semibold text-gray-300 mb-1">
-                  Perspective Mode
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Perspective</label>
                 <select
                   value={settings.interestMode}
-                  onChange={(e) =>
-                    setSettings({ ...settings, interestMode: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-3"
+                  onChange={(e) => setSettings({ ...settings, interestMode: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm mb-3 transition-colors ${t.input}`}
                 >
                   {interestModes.map((mode) => (
                     <option key={mode.id} value={mode.id}>
@@ -1152,18 +427,11 @@ const MiowNation = () => {
                   ))}
                 </select>
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1">
-                  Expert Level
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Expert Level</label>
                 <select
                   value={settings.perspectiveMode}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      perspectiveMode: e.target.value,
-                    })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  onChange={(e) => setSettings({ ...settings, perspectiveMode: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
                   {perspectiveModes.map((mode) => (
                     <option key={mode.id} value={mode.id}>
@@ -1173,14 +441,13 @@ const MiowNation = () => {
                 </select>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">🎯 Task Type</h3>
+              {/* Task Type */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Task Type</h3>
                 <select
                   value={settings.taskType}
-                  onChange={(e) =>
-                    setSettings({ ...settings, taskType: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  onChange={(e) => setSettings({ ...settings, taskType: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
                   {taskTypes.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -1190,44 +457,33 @@ const MiowNation = () => {
                 </select>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">
-                  👤 Custom Role
-                </h3>
+              {/* Custom Role */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Custom Role</h3>
                 <input
                   type="text"
                   value={settings.roleAssignment}
-                  onChange={(e) =>
-                    setSettings({ ...settings, roleAssignment: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, roleAssignment: e.target.value })}
                   placeholder={rolePresets[settings.taskType]}
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 />
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1 mt-3">
-                  IQ Level
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1 mt-3`}>IQ Level</label>
                 <input
                   type="number"
                   value={settings.iqLevel}
-                  onChange={(e) =>
-                    setSettings({ ...settings, iqLevel: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, iqLevel: e.target.value })}
                   placeholder="130"
                   min="100"
                   max="180"
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 />
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1">
-                  Expertise Level
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Expertise</label>
                 <select
                   value={settings.expertise}
-                  onChange={(e) =>
-                    setSettings({ ...settings, expertise: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  onChange={(e) => setSettings({ ...settings, expertise: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 >
                   <option value="expert">Expert</option>
                   <option value="world-class expert">World-Class Expert</option>
@@ -1235,87 +491,68 @@ const MiowNation = () => {
                   <option value="pioneer">Pioneer in Field</option>
                 </select>
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1">
-                  Age (Optional)
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Age (Optional)</label>
                 <input
                   type="number"
                   value={settings.age}
-                  onChange={(e) =>
-                    setSettings({ ...settings, age: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, age: e.target.value })}
                   placeholder="28"
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 />
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1">
-                  Background (Optional)
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Background</label>
                 <input
                   type="text"
                   value={settings.background}
-                  onChange={(e) =>
-                    setSettings({ ...settings, background: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, background: e.target.value })}
                   placeholder="Additional context..."
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 />
 
-                <label className="block text-sm font-semibold text-gray-300 mb-1 mt-3">
-                  Tone
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Tone</label>
                 <select
                   value={settings.tone}
-                  onChange={(e) =>
-                    setSettings({ ...settings, tone: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  onChange={(e) => setSettings({ ...settings, tone: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
-                  {tones.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {tones.map((tone) => (
+                    <option key={tone} value={tone}>
+                      {tone}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">⚙️ Options</h3>
+              {/* Options */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Options</h3>
                 <div className="space-y-2">
-                  <label className="flex items-center text-sm text-gray-300">
+                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
                     <input
                       type="checkbox"
                       checked={settings.useXML}
-                      onChange={(e) =>
-                        setSettings({ ...settings, useXML: e.target.checked })
-                      }
+                      onChange={(e) => setSettings({ ...settings, useXML: e.target.checked })}
                       className="mr-2"
                     />
                     XML Structure
                   </label>
-                  <label className="flex items-center text-sm text-gray-300">
+                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
                     <input
                       type="checkbox"
                       checked={settings.chainOfThought}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          chainOfThought: e.target.checked,
-                        })
+                        setSettings({ ...settings, chainOfThought: e.target.checked })
                       }
                       className="mr-2"
                     />
                     Chain of Thought
                   </label>
-                  <label className="flex items-center text-sm text-gray-300">
+                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
                     <input
                       type="checkbox"
                       checked={settings.verification}
                       onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          verification: e.target.checked,
-                        })
+                        setSettings({ ...settings, verification: e.target.checked })
                       }
                       className="mr-2"
                     />
@@ -1323,30 +560,24 @@ const MiowNation = () => {
                   </label>
                 </div>
 
-                <label className="block text-sm font-semibold text-gray-300 mt-3 mb-1">
+                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>
                   Output Format
                 </label>
                 <select
                   value={settings.outputFormat}
-                  onChange={(e) =>
-                    setSettings({ ...settings, outputFormat: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  onChange={(e) => setSettings({ ...settings, outputFormat: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
                   <option value="structured">Structured</option>
                   <option value="minimal">Minimal</option>
                   <option value="detailed">Detailed</option>
                 </select>
 
-                <label className="block text-sm font-semibold text-gray-300 mt-3 mb-1">
-                  Language
-                </label>
+                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>Language</label>
                 <select
                   value={settings.language}
-                  onChange={(e) =>
-                    setSettings({ ...settings, language: e.target.value })
-                  }
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  onChange={(e) => setSettings({ ...settings, language: e.target.value })}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 >
                   <option value="English">English</option>
                   <option value="Spanish">Spanish</option>
@@ -1357,30 +588,24 @@ const MiowNation = () => {
                   <option value="Hindi">Hindi</option>
                 </select>
 
-                <label className="block text-sm font-semibold text-gray-300 mt-3 mb-1">
+                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>
                   Length Target
                 </label>
                 <input
                   type="text"
                   value={settings.lengthTarget}
-                  onChange={(e) =>
-                    setSettings({ ...settings, lengthTarget: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, lengthTarget: e.target.value })}
                   placeholder="e.g., 500 words"
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 />
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">
-                  🎯 Focus Areas
-                </h3>
+              {/* Focus Areas */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Focus Areas</h3>
                 <div className="space-y-2">
                   {focusOptions.map((f) => (
-                    <label
-                      key={f}
-                      className="flex items-center text-sm text-gray-300"
-                    >
+                    <label key={f} className={`flex items-center text-sm ${t.textSecondary}`}>
                       <input
                         type="checkbox"
                         checked={settings.focusAreas.includes(f)}
@@ -1393,16 +618,12 @@ const MiowNation = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">
-                  🔒 Constraints
-                </h3>
+              {/* Constraints */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Constraints</h3>
                 <div className="space-y-2">
                   {constraintOptions.map((c) => (
-                    <label
-                      key={c}
-                      className="flex items-center text-sm text-gray-300"
-                    >
+                    <label key={c} className={`flex items-center text-sm ${t.textSecondary}`}>
                       <input
                         type="checkbox"
                         checked={settings.constraints.includes(c)}
@@ -1415,11 +636,10 @@ const MiowNation = () => {
                 </div>
               </div>
 
+              {/* Categories */}
               {settings.taskType === "classification" && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                  <h3 className="font-bold text-purple-300 mb-3">
-                    📋 Categories
-                  </h3>
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-3 text-sm">Categories</h3>
                   <div className="flex gap-2 mb-2">
                     <input
                       type="text"
@@ -1427,11 +647,11 @@ const MiowNation = () => {
                       onChange={(e) => setNewCategory(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && addCategory()}
                       placeholder="Add category..."
-                      className="flex-1 p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                      className={`flex-1 p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                     />
                     <button
                       onClick={addCategory}
-                      className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700"
+                      className={`p-2 rounded-lg transition-colors ${t.button}`}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -1440,14 +660,14 @@ const MiowNation = () => {
                     {customCategories.map((cat, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between bg-gray-700 p-2 rounded text-sm text-gray-300"
+                        className={`flex items-center justify-between p-2 rounded-lg text-sm border ${t.border}`}
                       >
                         <span>
                           {String.fromCharCode(65 + i)}) {cat}
                         </span>
                         <button
                           onClick={() => removeCategory(i)}
-                          className="text-red-400 hover:text-red-300"
+                          className="text-red-500 hover:text-red-600"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1457,28 +677,20 @@ const MiowNation = () => {
                 </div>
               )}
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">
-                  💾 Saved Prompts
-                </h3>
+              {/* Saved Prompts */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Saved Prompts</h3>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
                     value={promptName}
                     onChange={(e) => setPromptName(e.target.value)}
-                    placeholder="Prompt name..."
-                    className="flex-1 p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={promptTags}
-                    onChange={(e) => setPromptTags(e.target.value)}
-                    placeholder="tags (comma separated)"
-                    className="flex-1 p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                    placeholder="Name..."
+                    className={`flex-1 p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                   />
                   <button
                     onClick={savePrompt}
-                    className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700"
+                    className={`p-2 rounded-lg transition-colors ${t.button}`}
                   >
                     <Save className="w-4 h-4" />
                   </button>
@@ -1487,8 +699,8 @@ const MiowNation = () => {
                   type="text"
                   value={savedSearch}
                   onChange={(e) => setSavedSearch(e.target.value)}
-                  placeholder="Search saved (name or tags)"
-                  className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm mb-2"
+                  placeholder="Search..."
+                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
                 />
                 <div className="space-y-1 max-h-48 overflow-y-auto">
                   {savedPrompts
@@ -1501,65 +713,55 @@ const MiowNation = () => {
                       );
                     })
                     .map((saved) => (
-                    <div
-                      key={saved.id}
-                      className="flex items-center justify-between bg-gray-700 p-2 rounded text-xs"
-                    >
-                      <div className="flex-1 text-gray-300">
-                        <div className="font-semibold">{saved.name}</div>
-                        <div className="text-gray-500 text-xs">
-                          {saved.timestamp}
+                      <div
+                        key={saved.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs ${t.border}`}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{saved.name}</div>
+                          <div className={`${t.textMuted} text-xs`}>{saved.timestamp}</div>
                         </div>
-                        {saved.tags && saved.tags.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {saved.tags.map((t, i) => (
-                              <span
-                                key={i}
-                                className="bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full text-[10px]"
-                              >
-                                #{t}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => loadPrompt(saved)}
+                            className={`px-2 py-1 rounded text-xs transition-colors ${t.button}`}
+                          >
+                            Load
+                          </button>
+                          <button
+                            onClick={() => deletePrompt(saved.id)}
+                            className="text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => loadPrompt(saved)}
-                        className="text-blue-400 mr-1 hover:text-blue-300 text-xs px-1"
-                      >
-                        Load
-                      </button>
-                      <button
-                        onClick={() => deletePrompt(saved.id)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
 
+            {/* Main Content */}
             <div className="lg:col-span-3 space-y-4">
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3 flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2 text-orange-400" />
+              {/* Input Prompt */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2" />
                   Your Prompt
                 </h3>
                 <textarea
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
                   placeholder="Enter your base prompt here..."
-                  className="w-full p-3 bg-gray-700 text-gray-200 border-2 border-gray-600 rounded-lg focus:border-purple-500 focus:outline-none resize-none font-mono text-sm h-32"
+                  className={`w-full p-3 rounded-lg border resize-none font-mono text-sm h-32 transition-colors ${t.input}`}
                 />
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={improvePrompt}
                     disabled={!inputPrompt.trim()}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-lg"
+                    className={`flex-1 py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${t.accent} ${t.accentHover}`}
                   >
-                    <Zap className="w-5 h-5 mr-2" />
+                    <Zap className="w-4 h-4 mr-2" />
                     Generate Optimized Prompt
                   </button>
                   <input
@@ -1571,35 +773,30 @@ const MiowNation = () => {
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 flex items-center"
+                    className={`p-2 rounded-lg transition-colors ${t.button}`}
                   >
                     <Upload className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                <h3 className="font-bold text-purple-300 mb-3">
-                  📝 Custom Instructions
-                </h3>
+              {/* Custom Instructions */}
+              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <h3 className="font-semibold mb-3 text-sm">Custom Instructions</h3>
                 <textarea
                   value={settings.customInstructions}
                   onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      customInstructions: e.target.value,
-                    })
+                    setSettings({ ...settings, customInstructions: e.target.value })
                   }
                   placeholder="Add any additional custom instructions here..."
-                  className="w-full p-3 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg focus:border-purple-500 focus:outline-none resize-none text-sm h-20"
+                  className={`w-full p-3 rounded-lg border resize-none text-sm h-20 transition-colors ${t.input}`}
                 />
               </div>
 
+              {/* Few-Shot Examples */}
               {settings.technique === "fewshot" && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                  <h3 className="font-bold text-purple-300 mb-3">
-                    📚 Few-Shot Examples
-                  </h3>
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-3 text-sm">Few-Shot Examples</h3>
                   <div className="space-y-2 mb-3">
                     <input
                       type="text"
@@ -1608,7 +805,7 @@ const MiowNation = () => {
                         setNewExample({ ...newExample, input: e.target.value })
                       }
                       placeholder="Input example..."
-                      className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                      className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                     />
                     <input
                       type="text"
@@ -1617,32 +814,27 @@ const MiowNation = () => {
                         setNewExample({ ...newExample, output: e.target.value })
                       }
                       placeholder="Output example..."
-                      className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                      className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                     />
                     <button
                       onClick={addExample}
-                      className="w-full bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
+                      className={`w-full p-2 rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
                     >
                       <Plus className="w-4 h-4 mr-1" /> Add Example
                     </button>
                   </div>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {examples.map((ex, i) => (
-                      <div
-                        key={i}
-                        className="bg-gray-700 p-2 rounded text-sm text-gray-300"
-                      >
+                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border}`}>
                         <div>
-                          <strong className="text-purple-300">In:</strong>{" "}
-                          {ex.input}
+                          <strong>In:</strong> {ex.input}
                         </div>
                         <div>
-                          <strong className="text-purple-300">Out:</strong>{" "}
-                          {ex.output}
+                          <strong>Out:</strong> {ex.output}
                         </div>
                         <button
                           onClick={() => removeExample(i)}
-                          className="text-red-400 text-xs mt-1 hover:text-red-300"
+                          className="text-red-500 text-xs mt-1 hover:text-red-600"
                         >
                           Remove
                         </button>
@@ -1652,11 +844,10 @@ const MiowNation = () => {
                 </div>
               )}
 
+              {/* Variables */}
               {settings.technique === "variables" && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                  <h3 className="font-bold text-purple-300 mb-3">
-                    🔤 Variables
-                  </h3>
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-3 text-sm">Variables</h3>
                   <div className="space-y-2 mb-3">
                     <input
                       type="text"
@@ -1665,42 +856,33 @@ const MiowNation = () => {
                         setNewVariable({ ...newVariable, name: e.target.value })
                       }
                       placeholder="Variable name..."
-                      className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                      className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                     />
                     <input
                       type="text"
                       value={newVariable.description}
                       onChange={(e) =>
-                        setNewVariable({
-                          ...newVariable,
-                          description: e.target.value,
-                        })
+                        setNewVariable({ ...newVariable, description: e.target.value })
                       }
                       placeholder="Variable description..."
-                      className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm"
+                      className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                     />
                     <button
                       onClick={addVariable}
-                      className="w-full bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
+                      className={`w-full p-2 rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
                     >
                       <Plus className="w-4 h-4 mr-1" /> Add Variable
                     </button>
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {variables.map((v, i) => (
-                      <div
-                        key={i}
-                        className="bg-gray-700 p-2 rounded text-sm text-gray-300"
-                      >
+                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border}`}>
                         <div>
-                          <strong className="text-purple-300">
-                            {`{${v.name}}`}:
-                          </strong>{" "}
-                          {v.description}
+                          <strong>{`{${v.name}}`}:</strong> {v.description}
                         </div>
                         <button
                           onClick={() => removeVariable(i)}
-                          className="text-red-400 text-xs mt-1 hover:text-red-300"
+                          className="text-red-500 text-xs mt-1 hover:text-red-600"
                         >
                           Remove
                         </button>
@@ -1710,68 +892,57 @@ const MiowNation = () => {
                 </div>
               )}
 
+              {/* Prefill */}
               {settings.technique === "prefill" && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                  <h3 className="font-bold text-purple-300 mb-3">
-                    ✍️ Response Prefill
-                  </h3>
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-3 text-sm">Response Prefill</h3>
                   <textarea
                     value={settings.prefillResponse}
                     onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        prefillResponse: e.target.value,
-                      })
+                      setSettings({ ...settings, prefillResponse: e.target.value })
                     }
                     placeholder="Start the AI's response with..."
-                    className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded-lg text-sm h-16"
+                    className={`w-full p-2 rounded-lg border text-sm h-16 transition-colors ${t.input}`}
                   />
                 </div>
               )}
 
+              {/* Analysis */}
               {analysis && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
-                  <h3 className="font-bold text-purple-300 mb-3 flex items-center">
-                    <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-3 text-sm flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2" />
                     Analysis
                   </h3>
                   <div className="grid grid-cols-4 gap-4 mb-4">
-                    <div className="bg-gradient-to-br from-green-900 to-green-800 p-3 rounded-lg">
-                      <div className="text-sm text-gray-300">Quality Score</div>
-                      <div className="text-3xl font-bold text-green-400">
-                        {analysis.score}/100
-                      </div>
+                    <div className={`p-3 rounded-lg border ${t.border}`}>
+                      <div className={`text-xs ${t.textSecondary}`}>Quality</div>
+                      <div className="text-2xl font-bold">{analysis.score}/100</div>
                     </div>
-                    <div className="bg-gradient-to-br from-blue-900 to-blue-800 p-3 rounded-lg">
-                      <div className="text-sm text-gray-300">Features</div>
-                      <div className="text-3xl font-bold text-blue-400">
-                        {analysis.features.length}
-                      </div>
+                    <div className={`p-3 rounded-lg border ${t.border}`}>
+                      <div className={`text-xs ${t.textSecondary}`}>Features</div>
+                      <div className="text-2xl font-bold">{analysis.features.length}</div>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-900 to-purple-800 p-3 rounded-lg">
-                      <div className="text-sm text-gray-300">Words</div>
-                      <div className="text-3xl font-bold text-purple-400">
-                        {analysis.wordCount}
-                      </div>
+                    <div className={`p-3 rounded-lg border ${t.border}`}>
+                      <div className={`text-xs ${t.textSecondary}`}>Words</div>
+                      <div className="text-2xl font-bold">{analysis.wordCount}</div>
                     </div>
-                    <div className="bg-gradient-to-br from-pink-900 to-pink-800 p-3 rounded-lg">
-                      <div className="text-sm text-gray-300">Characters</div>
-                      <div className="text-3xl font-bold text-pink-400">
-                        {analysis.characterCount}
-                      </div>
+                    <div className={`p-3 rounded-lg border ${t.border}`}>
+                      <div className={`text-xs ${t.textSecondary}`}>Characters</div>
+                      <div className="text-2xl font-bold">{analysis.characterCount}</div>
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm text-gray-300 mb-2">
+                    <h4 className={`font-medium text-sm ${t.textSecondary} mb-2`}>
                       Active Features:
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {analysis.features.map((f, i) => (
                         <span
                           key={i}
-                          className="bg-green-900 text-green-300 px-3 py-1 rounded-full text-xs font-semibold"
+                          className={`px-2 py-1 rounded text-xs border ${t.border}`}
                         >
-                          ✓ {f}
+                          {f}
                         </span>
                       ))}
                     </div>
@@ -1779,11 +950,12 @@ const MiowNation = () => {
                 </div>
               )}
 
+              {/* Improved Prompt */}
               {improvedPrompt && (
-                <div className="bg-gray-800 rounded-lg shadow-xl p-4">
+                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-purple-300 flex items-center">
-                      <Zap className="w-5 h-5 mr-2 text-green-400" />
+                    <h3 className="font-semibold text-sm flex items-center">
+                      <Zap className="w-4 h-4 mr-2" />
                       Optimized Prompt
                     </h3>
                     <div className="flex gap-2">
@@ -1792,32 +964,32 @@ const MiowNation = () => {
                           navigator.clipboard.writeText(improvedPrompt);
                           alert("Copied to clipboard!");
                         }}
-                        className="bg-green-600 text-white py-2 px-4 rounded-lg text-sm hover:bg-green-700 flex items-center transition"
+                        className={`py-2 px-4 rounded-lg text-sm font-medium flex items-center transition-colors ${t.button}`}
                       >
                         <Copy className="w-4 h-4 mr-1" /> Copy
                       </button>
                       <div className="relative group">
                         <button
-                          className="bg-blue-600 text-white py-2 px-4 rounded-lg text-sm hover:bg-blue-700 flex items-center transition"
+                          className={`py-2 px-4 rounded-lg text-sm font-medium flex items-center transition-colors ${t.button}`}
                         >
                           <Download className="w-4 h-4 mr-1" /> Export
                         </button>
-                        <div className="absolute right-0 mt-1 hidden group-hover:block bg-gray-800 border border-gray-700 rounded shadow-lg z-10">
+                        <div className={`absolute right-0 mt-1 hidden group-hover:block ${t.card} border ${t.border} rounded-lg shadow-lg z-10`}>
                           <button
                             onClick={() => exportPrompt("json")}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                            className={`block w-full text-left px-4 py-2 text-sm rounded-t-lg transition-colors ${t.cardHover}`}
                           >
                             JSON
                           </button>
                           <button
                             onClick={() => exportPrompt("md")}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                            className={`block w-full text-left px-4 py-2 text-sm transition-colors ${t.cardHover}`}
                           >
                             Markdown
                           </button>
                           <button
                             onClick={() => exportPrompt("txt")}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                            className={`block w-full text-left px-4 py-2 text-sm rounded-b-lg transition-colors ${t.cardHover}`}
                           >
                             Plain Text
                           </button>
@@ -1825,8 +997,8 @@ const MiowNation = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-gray-900 rounded-lg p-4 border-2 border-purple-500 max-h-96 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap font-mono text-xs text-gray-300">
+                  <div className={`rounded-lg p-4 border max-h-96 overflow-y-auto ${t.border} ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
+                    <pre className="whitespace-pre-wrap font-mono text-xs">
                       {improvedPrompt}
                     </pre>
                   </div>
@@ -1839,4 +1011,5 @@ const MiowNation = () => {
     </div>
   );
 };
+
 export default MiowNation;
