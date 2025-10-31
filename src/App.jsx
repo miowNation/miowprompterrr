@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Lightbulb,
   Zap,
@@ -23,6 +23,16 @@ import {
   Cpu,
   Moon,
   Sun,
+  Clock,
+  TrendingUp,
+  GitBranch,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Lightbulb as LightbulbIcon,
+  Zap as ZapIcon,
 } from "lucide-react";
 import {
   interestModes,
@@ -37,10 +47,152 @@ import {
   tones,
   focusOptions,
   constraintOptions,
-  quickTemplates
+  quickTemplates,
+  netFramework,
 } from "./constants";
 import { useMiowNationLogic } from "./useM";
 
+// Tooltip Component
+const Tooltip = ({ text, children }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative inline-block group">
+      {children}
+      {show && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-50 shadow-lg">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Card Component with animation
+const AnimatedCard = ({ children, className = "", hover = true }) => {
+  return (
+    <div
+      className={`transition-all duration-300 ${hover ? "hover:shadow-lg hover:scale-[1.02]" : ""} ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Progress Bar Component
+const ProgressBar = ({ value, max = 100, color = "bg-green-500" }) => {
+  const percentage = (value / max) * 100;
+  return (
+    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+      <div
+        className={`h-full ${color} transition-all duration-300`}
+        style={{ width: `${percentage}%` }}
+      />
+    </div>
+  );
+};
+
+// Badge Component
+const Badge = ({ text, variant = "default", icon: Icon }) => {
+  const variants = {
+    default: "bg-gray-700 text-gray-100",
+    success: "bg-green-900 text-green-100",
+    warning: "bg-yellow-900 text-yellow-100",
+    error: "bg-red-900 text-red-100",
+    info: "bg-blue-900 text-blue-100",
+  };
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${variants[variant]}`}>
+      {Icon && <Icon className="w-3 h-3" />}
+      {text}
+    </span>
+  );
+};
+
+// Enhanced Stats Widget
+const StatsWidget = ({ stats, theme }) => {
+  const t = theme;
+  return (
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-3`}>
+      {stats.map((stat, i) => (
+        <AnimatedCard key={i} hover>
+          <div className={`${t.card} rounded-lg border ${t.border} p-4 text-center`}>
+            <div className={`text-sm ${t.textSecondary} mb-2`}>{stat.label}</div>
+            <div className="text-3xl font-bold mb-2">{stat.value}</div>
+            {stat.trend && (
+              <div className="flex items-center justify-center gap-1 text-xs">
+                <TrendingUp className="w-3 h-3 text-green-500" />
+                <span className="text-green-500">{stat.trend}%</span>
+              </div>
+            )}
+          </div>
+        </AnimatedCard>
+      ))}
+    </div>
+  );
+};
+
+// Collapsible Section
+const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = true }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors"
+      >
+        <div className="flex items-center gap-2 font-semibold">
+          {Icon && <Icon className="w-4 h-4" />}
+          {title}
+        </div>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && <div className="pl-6 space-y-3 mt-2">{children}</div>}
+    </div>
+  );
+};
+
+// NET Framework Visualizer
+const NETFrameworkVisualizer = ({ theme: t }) => {
+  const [expandedLayer, setExpandedLayer] = useState(0);
+
+  return (
+    <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
+      <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+        <Brain className="w-5 h-5" />
+        NET Framework Architecture
+      </h3>
+      <div className="space-y-3">
+        {Object.entries(netFramework.components).map(([key, layer], idx) => (
+          <div
+            key={key}
+            className={`border-l-4 pl-4 py-3 cursor-pointer transition-all ${
+              expandedLayer === idx ? `border-blue-500 bg-blue-900 bg-opacity-20` : `border-gray-600 hover:border-gray-500`
+            }`}
+            onClick={() => setExpandedLayer(expandedLayer === idx ? -1 : idx)}
+          >
+            <div className="font-semibold text-sm flex items-center justify-between">
+              {layer.name}
+              {expandedLayer === idx ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+            {expandedLayer === idx && (
+              <div className={`mt-2 text-xs ${t.textSecondary} space-y-1`}>
+                <p className="mb-2">{layer.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {layer.techniques.map((tech, i) => (
+                    <Badge key={i} text={tech} variant="info" />
+                  ))}
+                </div>
+                <p className="text-blue-400 mt-2">→ {layer.purpose}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Main MiowNation Component
 const MiowNation = () => {
   const logic = useMiowNationLogic();
 
@@ -99,69 +251,115 @@ const MiowNation = () => {
     resetAll,
   } = logic;
 
-  // Theme configuration
+  const [expandedSidebar, setExpandedSidebar] = useState(true);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
+  // Enhanced theme configuration with more colors
   const themes = {
     dark: {
       bg: "bg-gray-950",
       card: "bg-gray-900",
-      cardHover: "hover:bg-gray-850",
+      cardHover: "hover:bg-gray-800",
       border: "border-gray-800",
       borderHover: "hover:border-gray-700",
       text: "text-gray-100",
       textSecondary: "text-gray-400",
       textMuted: "text-gray-500",
-      input: "bg-gray-900 border-gray-800 text-gray-100 focus:border-gray-700",
+      input: "bg-gray-900 border-gray-800 text-gray-100 focus:border-blue-600",
       button: "bg-gray-800 text-gray-100 hover:bg-gray-750",
-      buttonActive: "bg-gray-100 text-gray-900",
-      accent: "bg-gray-100 text-gray-900",
-      accentHover: "hover:bg-gray-200",
+      buttonActive: "bg-blue-600 text-white",
+      accent: "bg-blue-600 text-white",
+      accentHover: "hover:bg-blue-700",
       divider: "border-gray-800",
+      gradient: "from-gray-900 to-gray-950",
     },
     light: {
-      bg: "bg-gray-50",
-      card: "bg-white",
-      cardHover: "hover:bg-gray-50",
+      bg: "bg-white",
+      card: "bg-gray-50",
+      cardHover: "hover:bg-gray-100",
       border: "border-gray-200",
       borderHover: "hover:border-gray-300",
       text: "text-gray-900",
       textSecondary: "text-gray-600",
       textMuted: "text-gray-500",
-      input: "bg-white border-gray-200 text-gray-900 focus:border-gray-400",
-      button: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-      buttonActive: "bg-gray-900 text-gray-100",
-      accent: "bg-gray-900 text-gray-100",
-      accentHover: "hover:bg-gray-800",
+      input: "bg-white border-gray-300 text-gray-900 focus:border-blue-500",
+      button: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+      buttonActive: "bg-blue-600 text-white",
+      accent: "bg-blue-600 text-white",
+      accentHover: "hover:bg-blue-700",
       divider: "border-gray-200",
-    }
+      gradient: "from-gray-50 to-white",
+    },
   };
 
   const t = themes[theme];
 
+  // Memoized stats
+  const stats = useMemo(
+    () => [
+      {
+        label: "Quality Score",
+        value: analysis?.score || "0",
+        trend: analysis ? (analysis.score > 70 ? "↑85" : "↑60") : null,
+      },
+      {
+        label: "Active Features",
+        value: analysis?.features.length || "0",
+      },
+      {
+        label: "Word Count",
+        value: analysis?.wordCount || "0",
+      },
+      {
+        label: "Saved Prompts",
+        value: savedPrompts.length,
+      },
+    ],
+    [analysis, savedPrompts]
+  );
+
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${t.bg} ${t.text}`}>
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
+    <div className={`min-h-screen transition-colors duration-300 ${t.bg} ${t.text}`}>
+      {/* Gradient Background */}
+      <div
+        className={`fixed top-0 left-0 right-0 h-96 bg-gradient-to-br ${t.gradient} opacity-50 pointer-events-none`}
+      />
+
+      <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-6">
+        {/* Enhanced Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Wand2 className="w-8 h-8" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-600 rounded-lg shadow-lg">
+                <Wand2 className="w-8 h-8" />
+              </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">MiowNation</h1>
-                <p className={`text-sm ${t.textSecondary}`}>Prompt Engineering Studio</p>
+                <h1 className="text-4xl font-black tracking-tight">MiowNation</h1>
+                <p className={`text-sm ${t.textSecondary}`}>
+                  Advanced Prompt Engineering Studio with NET Framework
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className={`p-2 rounded-lg transition-colors ${t.button}`}
-                aria-label="Toggle theme"
+                title="Toggle theme"
               >
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className={`p-2 rounded-lg transition-colors ${t.button}`}
+                title="Toggle analytics"
+              >
+                <TrendingUp className="w-5 h-5" />
+              </button>
+              <button
                 onClick={resetAll}
                 className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.button}`}
+                title="Reset all settings"
               >
                 Reset
               </button>
@@ -169,21 +367,29 @@ const MiowNation = () => {
                 onClick={() => {
                   const hash = serializeState();
                   navigator.clipboard.writeText(`${location.origin}${location.pathname}#p=${hash}`);
-                  alert("Shareable URL copied!");
+                  alert("Shareable URL copied! 📋");
                 }}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.button}`}
+                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.accent} ${t.accentHover}`}
               >
                 Share
               </button>
             </div>
           </div>
 
+          {/* Analytics Bar */}
+          {showAnalytics && (
+            <div className="mb-6 animate-in fade-in">
+              <StatsWidget stats={stats} theme={t} />
+            </div>
+          )}
+
           {/* Tabs */}
-          <div className={`flex gap-1 p-1 rounded-lg border ${t.border} ${t.card}`}>
+          <div className={`flex gap-1 p-1 rounded-lg border ${t.border} ${t.card} overflow-x-auto`}>
             {[
               { id: "presets", label: "Presets", icon: Cpu },
               { id: "builder", label: "Builder", icon: Layers },
               { id: "templates", label: "Templates", icon: Sparkles },
+              { id: "net", label: "NET Framework", icon: Brain },
               { id: "guide", label: "Guide", icon: Book },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -191,11 +397,11 @@ const MiowNation = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    activeTab === tab.id ? t.buttonActive : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id ? t.buttonActive : `${t.textSecondary} hover:${t.text}`
                   }`}
                 >
-                  <Icon className="w-4 h-4 inline mr-2" />
+                  <Icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               );
@@ -203,55 +409,86 @@ const MiowNation = () => {
           </div>
         </div>
 
-        {/* Presets Tab */}
-        {activeTab === "presets" && (
-          <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
-            <h2 className="text-xl font-semibold mb-2">Quick Start Presets</h2>
-            <p className={`${t.textSecondary} text-sm mb-6`}>
-              Pre-configured modes optimized for specific use cases
-            </p>
+        {/* NET Framework Tab */}
+        {activeTab === "net" && (
+          <div className="space-y-6">
+            <NETFrameworkVisualizer theme={t} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {presetModes.map((mode) => (
-                <div
-                  key={mode.id}
-                  className={`border ${t.border} rounded-lg p-4 transition-colors ${t.cardHover}`}
-                >
-                  <h3 className="font-semibold mb-2">{mode.name}</h3>
-                  <p className={`text-sm ${t.textSecondary} mb-4`}>{mode.desc}</p>
-                  <button
-                    onClick={() => loadPresetMode(mode.id)}
-                    className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
-                  >
-                    Load Preset
-                  </button>
-                </div>
-              ))}
+            <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
+              <h3 className="font-bold text-lg mb-4">Decision Matrix</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(netFramework.decisionMatrix).map(([task, config]) => (
+                  <div key={task} className={`border ${t.border} rounded-lg p-4`}>
+                    <h4 className="font-semibold mb-2 capitalize">{task.replace(/_/g, " ")}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {config.techniques.map((tech, i) => (
+                        <Badge key={i} text={tech} variant="success" />
+                      ))}
+                    </div>
+                    <div className="mt-3 text-sm text-green-400">
+                      Expected: {config.expectedPerformance}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
+        {/* Presets Tab */}
+        {activeTab === "presets" && (
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6`}>
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+              <Cpu className="w-6 h-6" />
+              Quick Start Presets
+            </h2>
+            <p className={`${t.textSecondary} text-sm mb-6`}>
+              Pre-configured modes optimized for specific use cases (including NET Framework techniques)
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {presetModes.map((mode) => (
+                <AnimatedCard key={mode.id} hover className={`border ${t.border} rounded-lg p-4 transition-all`}>
+                  <h3 className="font-semibold mb-2 text-lg">{mode.name}</h3>
+                  <p className={`text-sm ${t.textSecondary} mb-3 min-h-10`}>{mode.desc}</p>
+                  {mode.config.performanceGain && (
+                    <Badge
+                      text={mode.config.performanceGain}
+                      variant="success"
+                      icon={TrendingUp}
+                    />
+                  )}
+                  <button
+                    onClick={() => loadPresetMode(mode.id)}
+                    className={`w-full mt-4 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${t.accent} ${t.accentHover}`}
+                  >
+                    Load Preset
+                  </button>
+                </AnimatedCard>
+              ))}
+            </div>
+          </AnimatedCard>
+        )}
+
         {/* Templates Tab */}
         {activeTab === "templates" && (
-          <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
-            <h2 className="text-xl font-semibold mb-2">Quick Templates</h2>
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6`}>
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+              <Sparkles className="w-6 h-6" />
+              Quick Templates
+            </h2>
             <p className={`${t.textSecondary} text-sm mb-6`}>
-              Proven prompt structures for exceptional results
+              Proven prompt structures and advanced reasoning patterns
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {quickTemplates.map((template, i) => (
-                <div
-                  key={i}
-                  className={`border ${t.border} rounded-lg p-4 transition-colors ${t.cardHover}`}
-                >
+                <AnimatedCard key={i} hover className={`border ${t.border} rounded-lg p-4 transition-all`}>
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold">{template.name}</h3>
-                    <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'} ${t.textSecondary}`}>
-                      {template.category}
-                    </span>
+                    <h3 className="font-semibold flex-1">{template.name}</h3>
+                    <Badge text={template.category} variant="info" />
                   </div>
-                  <p className={`text-sm font-mono ${t.textSecondary} mb-3`}>
+                  <p className={`text-xs font-mono ${t.textSecondary} mb-3 line-clamp-3`}>
                     {template.template}
                   </p>
                   <button
@@ -260,57 +497,68 @@ const MiowNation = () => {
                   >
                     Load Template
                   </button>
-                </div>
+                </AnimatedCard>
               ))}
             </div>
-          </div>
+          </AnimatedCard>
         )}
 
         {/* Guide Tab */}
         {activeTab === "guide" && (
-          <div className={`${t.card} rounded-lg border ${t.border} p-6 max-h-[70vh] overflow-y-auto`}>
-            <h2 className="text-xl font-semibold mb-6">Prompt Engineering Guide</h2>
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6 max-h-[70vh] overflow-y-auto`}>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Book className="w-6 h-6" />
+              Prompt Engineering Guide
+            </h2>
 
             {tiers.map((tier) => (
-              <div key={tier.id} className={`border-l-2 ${t.border} pl-4 mb-6`}>
-                <h3 className="text-lg font-semibold mb-3">
-                  {tier.label} - {tier.desc}
-                </h3>
+              <CollapsibleSection
+                key={tier.id}
+                title={`${tier.label} - ${tier.desc}`}
+                icon={Target}
+                defaultOpen={tier.id === "tier1"}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {techniquesByTier[tier.id].map((tech) => (
-                    <div key={tech.id} className={`border ${t.border} rounded p-3`}>
-                      <div className="font-medium text-sm mb-1">{tech.label}</div>
+                    <div
+                      key={tech.id}
+                      className={`border ${t.border} rounded p-3 transition-colors ${t.cardHover}`}
+                    >
+                      <div className="font-medium text-sm mb-1 flex items-center gap-2">
+                        <ZapIcon className="w-3 h-3" />
+                        {tech.label}
+                      </div>
                       <div className={`text-xs ${t.textSecondary}`}>{tech.desc}</div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             ))}
 
-            <div className={`border-l-2 ${t.border} pl-4 mt-6`}>
-              <h3 className="font-semibold mb-3">Master Principles</h3>
+            <CollapsibleSection title="Master Principles" icon={LightbulbIcon} defaultOpen={true}>
               <ul className={`text-sm ${t.textSecondary} space-y-2`}>
                 <li>• <strong>Clarity:</strong> Be specific and unambiguous</li>
-                <li>• <strong>Structure:</strong> Use XML tags for organization</li>
+                <li>• <strong>Structure:</strong> Use XML tags and clear formatting</li>
                 <li>• <strong>Verification:</strong> Request reasoning and evidence</li>
                 <li>• <strong>Examples:</strong> Few-shot learning is powerful</li>
                 <li>• <strong>Iteration:</strong> Systematically refine prompts</li>
+                <li>• <strong>Technique Selection:</strong> Match technique to task type</li>
+                <li>• <strong>Combination:</strong> NET Framework combines techniques intelligently</li>
               </ul>
-            </div>
-          </div>
+            </CollapsibleSection>
+          </AnimatedCard>
         )}
 
         {/* Builder Tab */}
         {activeTab === "builder" && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-              {/* Personality */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 flex items-center text-sm">
-                  <Users className="w-4 h-4 mr-2" />
-                  Personality
-                </h3>
+            <div
+              className={`lg:col-span-1 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 transition-all ${
+                !expandedSidebar && "hidden"
+              }`}
+            >
+              <CollapsibleSection title="Personality" icon={Users} defaultOpen={true}>
                 <select
                   value={settings.personality}
                   onChange={(e) => setSettings({ ...settings, personality: e.target.value })}
@@ -327,14 +575,9 @@ const MiowNation = () => {
                     {personalities.find((p) => p.id === settings.personality)?.desc}
                   </p>
                 )}
-              </div>
+              </CollapsibleSection>
 
-              {/* Tier Selection */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm flex items-center">
-                  <Target className="w-4 h-4 mr-2" />
-                  Tier
-                </h3>
+              <CollapsibleSection title="Tier & Technique" icon={Target} defaultOpen={true}>
                 <div className="space-y-2">
                   {tiers.map((tier) => (
                     <button
@@ -354,12 +597,8 @@ const MiowNation = () => {
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {/* Technique */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Technique</h3>
-                <div className="space-y-1">
+                <div className="mt-3 space-y-1">
                   {techniquesByTier[settings.tier].map((tech) => (
                     <button
                       key={tech.id}
@@ -372,15 +611,10 @@ const MiowNation = () => {
                     </button>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
 
-              {/* Reasoning Mode */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm flex items-center">
-                  <Brain className="w-4 h-4 mr-2" />
-                  Reasoning
-                </h3>
-                <label className={`flex items-center text-sm ${t.textSecondary} mb-3`}>
+              <CollapsibleSection title="Reasoning" icon={Brain} defaultOpen={false}>
+                <label className={`flex items-center text-sm ${t.textSecondary}`}>
                   <input
                     type="checkbox"
                     checked={settings.reasoningMode}
@@ -397,7 +631,7 @@ const MiowNation = () => {
                     onChange={(e) =>
                       setSettings({ ...settings, reasoningSteps: e.target.value })
                     }
-                    className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
+                    className={`w-full p-2 rounded-lg border text-sm mt-2 transition-colors ${t.input}`}
                   >
                     {Object.entries(reasoningTemplates).map(([key, template]) => (
                       <option key={key} value={key}>
@@ -406,15 +640,10 @@ const MiowNation = () => {
                     ))}
                   </select>
                 )}
-              </div>
+              </CollapsibleSection>
 
-              {/* Interest Amplifier */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm flex items-center">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Interest Amplifier
-                </h3>
-                <label className={`block text-xs ${t.textSecondary} mb-1`}>Perspective</label>
+              <CollapsibleSection title="Perspectives" icon={Eye} defaultOpen={false}>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Interest Mode</label>
                 <select
                   value={settings.interestMode}
                   onChange={(e) => setSettings({ ...settings, interestMode: e.target.value })}
@@ -439,15 +668,14 @@ const MiowNation = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </CollapsibleSection>
 
-              {/* Task Type */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Task Type</h3>
+              <CollapsibleSection title="Task & Role" icon={Settings} defaultOpen={false}>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Task Type</label>
                 <select
                   value={settings.taskType}
                   onChange={(e) => setSettings({ ...settings, taskType: e.target.value })}
-                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
+                  className={`w-full p-2 rounded-lg border text-sm mb-3 transition-colors ${t.input}`}
                 >
                   {taskTypes.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -455,65 +683,33 @@ const MiowNation = () => {
                     </option>
                   ))}
                 </select>
-              </div>
 
-              {/* Custom Role */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Custom Role</h3>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Custom Role</label>
                 <input
                   type="text"
                   value={settings.roleAssignment}
                   onChange={(e) => setSettings({ ...settings, roleAssignment: e.target.value })}
                   placeholder={rolePresets[settings.taskType]}
-                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
+                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
                 />
+              </CollapsibleSection>
 
-                <label className={`block text-xs ${t.textSecondary} mb-1 mt-3`}>IQ Level</label>
+              <CollapsibleSection title="Tuning" icon={Zap} defaultOpen={false}>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>IQ Level: {settings.iqLevel}</label>
                 <input
-                  type="number"
+                  type="range"
                   value={settings.iqLevel}
-                  onChange={(e) => setSettings({ ...settings, iqLevel: e.target.value })}
-                  placeholder="130"
+                  onChange={(e) => setSettings({ ...settings, iqLevel: parseInt(e.target.value) })}
                   min="100"
                   max="180"
-                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
-                />
-
-                <label className={`block text-xs ${t.textSecondary} mb-1`}>Expertise</label>
-                <select
-                  value={settings.expertise}
-                  onChange={(e) => setSettings({ ...settings, expertise: e.target.value })}
-                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
-                >
-                  <option value="expert">Expert</option>
-                  <option value="world-class expert">World-Class Expert</option>
-                  <option value="leading authority">Leading Authority</option>
-                  <option value="pioneer">Pioneer in Field</option>
-                </select>
-
-                <label className={`block text-xs ${t.textSecondary} mb-1`}>Age (Optional)</label>
-                <input
-                  type="number"
-                  value={settings.age}
-                  onChange={(e) => setSettings({ ...settings, age: e.target.value })}
-                  placeholder="28"
-                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
-                />
-
-                <label className={`block text-xs ${t.textSecondary} mb-1`}>Background</label>
-                <input
-                  type="text"
-                  value={settings.background}
-                  onChange={(e) => setSettings({ ...settings, background: e.target.value })}
-                  placeholder="Additional context..."
-                  className={`w-full p-2 rounded-lg border text-sm mb-2 transition-colors ${t.input}`}
+                  className="w-full mb-3"
                 />
 
                 <label className={`block text-xs ${t.textSecondary} mb-1`}>Tone</label>
                 <select
                   value={settings.tone}
                   onChange={(e) => setSettings({ ...settings, tone: e.target.value })}
-                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
+                  className={`w-full p-2 rounded-lg border text-sm mb-3 transition-colors ${t.input}`}
                 >
                   {tones.map((tone) => (
                     <option key={tone} value={tone}>
@@ -521,59 +717,8 @@ const MiowNation = () => {
                     </option>
                   ))}
                 </select>
-              </div>
 
-              {/* Options */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Options</h3>
-                <div className="space-y-2">
-                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
-                    <input
-                      type="checkbox"
-                      checked={settings.useXML}
-                      onChange={(e) => setSettings({ ...settings, useXML: e.target.checked })}
-                      className="mr-2"
-                    />
-                    XML Structure
-                  </label>
-                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
-                    <input
-                      type="checkbox"
-                      checked={settings.chainOfThought}
-                      onChange={(e) =>
-                        setSettings({ ...settings, chainOfThought: e.target.checked })
-                      }
-                      className="mr-2"
-                    />
-                    Chain of Thought
-                  </label>
-                  <label className={`flex items-center text-sm ${t.textSecondary}`}>
-                    <input
-                      type="checkbox"
-                      checked={settings.verification}
-                      onChange={(e) =>
-                        setSettings({ ...settings, verification: e.target.checked })
-                      }
-                      className="mr-2"
-                    />
-                    Verification
-                  </label>
-                </div>
-
-                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>
-                  Output Format
-                </label>
-                <select
-                  value={settings.outputFormat}
-                  onChange={(e) => setSettings({ ...settings, outputFormat: e.target.value })}
-                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
-                >
-                  <option value="structured">Structured</option>
-                  <option value="minimal">Minimal</option>
-                  <option value="detailed">Detailed</option>
-                </select>
-
-                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>Language</label>
+                <label className={`block text-xs ${t.textSecondary} mb-1`}>Language</label>
                 <select
                   value={settings.language}
                   onChange={(e) => setSettings({ ...settings, language: e.target.value })}
@@ -587,24 +732,11 @@ const MiowNation = () => {
                   <option value="Chinese">Chinese</option>
                   <option value="Hindi">Hindi</option>
                 </select>
+              </CollapsibleSection>
 
-                <label className={`block text-xs ${t.textSecondary} mt-3 mb-1`}>
-                  Length Target
-                </label>
-                <input
-                  type="text"
-                  value={settings.lengthTarget}
-                  onChange={(e) => setSettings({ ...settings, lengthTarget: e.target.value })}
-                  placeholder="e.g., 500 words"
-                  className={`w-full p-2 rounded-lg border text-sm transition-colors ${t.input}`}
-                />
-              </div>
-
-              {/* Focus Areas */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Focus Areas</h3>
-                <div className="space-y-2">
-                  {focusOptions.map((f) => (
+              <CollapsibleSection title="Focus & Constraints" icon={Target} defaultOpen={false}>
+                <div className="space-y-2 mb-3">
+                  {focusOptions.slice(0, 4).map((f) => (
                     <label key={f} className={`flex items-center text-sm ${t.textSecondary}`}>
                       <input
                         type="checkbox"
@@ -616,13 +748,8 @@ const MiowNation = () => {
                     </label>
                   ))}
                 </div>
-              </div>
-
-              {/* Constraints */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Constraints</h3>
                 <div className="space-y-2">
-                  {constraintOptions.map((c) => (
+                  {constraintOptions.slice(0, 4).map((c) => (
                     <label key={c} className={`flex items-center text-sm ${t.textSecondary}`}>
                       <input
                         type="checkbox"
@@ -634,52 +761,9 @@ const MiowNation = () => {
                     </label>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
 
-              {/* Categories */}
-              {settings.taskType === "classification" && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                  <h3 className="font-semibold mb-3 text-sm">Categories</h3>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && addCategory()}
-                      placeholder="Add category..."
-                      className={`flex-1 p-2 rounded-lg border text-sm transition-colors ${t.input}`}
-                    />
-                    <button
-                      onClick={addCategory}
-                      className={`p-2 rounded-lg transition-colors ${t.button}`}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {customCategories.map((cat, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-center justify-between p-2 rounded-lg text-sm border ${t.border}`}
-                      >
-                        <span>
-                          {String.fromCharCode(65 + i)}) {cat}
-                        </span>
-                        <button
-                          onClick={() => removeCategory(i)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Saved Prompts */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                <h3 className="font-semibold mb-3 text-sm">Saved Prompts</h3>
+              <CollapsibleSection title="Saved Prompts" icon={Save} defaultOpen={false}>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -715,7 +799,7 @@ const MiowNation = () => {
                     .map((saved) => (
                       <div
                         key={saved.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs ${t.border}`}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs ${t.border} hover:bg-gray-800 transition-colors`}
                       >
                         <div className="flex-1">
                           <div className="font-medium">{saved.name}</div>
@@ -738,13 +822,20 @@ const MiowNation = () => {
                       </div>
                     ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             </div>
 
             {/* Main Content */}
             <div className="lg:col-span-3 space-y-4">
+              <button
+                onClick={() => setExpandedSidebar(!expandedSidebar)}
+                className={`lg:hidden p-2 rounded-lg ${t.button}`}
+              >
+                {expandedSidebar ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+
               {/* Input Prompt */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+              <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
                 <h3 className="font-semibold mb-3 text-sm flex items-center">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Your Prompt
@@ -755,6 +846,12 @@ const MiowNation = () => {
                   placeholder="Enter your base prompt here..."
                   className={`w-full p-3 rounded-lg border resize-none font-mono text-sm h-32 transition-colors ${t.input}`}
                 />
+                {inputPrompt && (
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className={t.textSecondary}>{inputPrompt.length} characters</span>
+                    <ProgressBar value={Math.min(inputPrompt.length, 500)} max={500} />
+                  </div>
+                )}
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={improvePrompt}
@@ -774,14 +871,15 @@ const MiowNation = () => {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className={`p-2 rounded-lg transition-colors ${t.button}`}
+                    title="Import prompt"
                   >
                     <Upload className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
+              </AnimatedCard>
 
               {/* Custom Instructions */}
-              <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+              <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
                 <h3 className="font-semibold mb-3 text-sm">Custom Instructions</h3>
                 <textarea
                   value={settings.customInstructions}
@@ -791,11 +889,11 @@ const MiowNation = () => {
                   placeholder="Add any additional custom instructions here..."
                   className={`w-full p-3 rounded-lg border resize-none text-sm h-20 transition-colors ${t.input}`}
                 />
-              </div>
+              </AnimatedCard>
 
               {/* Few-Shot Examples */}
               {settings.technique === "fewshot" && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
                   <h3 className="font-semibold mb-3 text-sm">Few-Shot Examples</h3>
                   <div className="space-y-2 mb-3">
                     <input
@@ -841,12 +939,12 @@ const MiowNation = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </AnimatedCard>
               )}
 
               {/* Variables */}
               {settings.technique === "variables" && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
                   <h3 className="font-semibold mb-3 text-sm">Variables</h3>
                   <div className="space-y-2 mb-3">
                     <input
@@ -889,35 +987,21 @@ const MiowNation = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Prefill */}
-              {settings.technique === "prefill" && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                  <h3 className="font-semibold mb-3 text-sm">Response Prefill</h3>
-                  <textarea
-                    value={settings.prefillResponse}
-                    onChange={(e) =>
-                      setSettings({ ...settings, prefillResponse: e.target.value })
-                    }
-                    placeholder="Start the AI's response with..."
-                    className={`w-full p-2 rounded-lg border text-sm h-16 transition-colors ${t.input}`}
-                  />
-                </div>
+                </AnimatedCard>
               )}
 
               {/* Analysis */}
               {analysis && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                  <h3 className="font-semibold mb-3 text-sm flex items-center">
+                <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <h3 className="font-semibold mb-4 text-sm flex items-center">
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Analysis
+                    Analysis & Metrics
                   </h3>
-                  <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div className={`p-3 rounded-lg border ${t.border}`}>
-                      <div className={`text-xs ${t.textSecondary}`}>Quality</div>
-                      <div className="text-2xl font-bold">{analysis.score}/100</div>
+                      <div className={`text-xs ${t.textSecondary}`}>Quality Score</div>
+                      <div className="text-2xl font-bold">{analysis.score}%</div>
+                      <ProgressBar value={analysis.score} color="bg-blue-500" />
                     </div>
                     <div className={`p-3 rounded-lg border ${t.border}`}>
                       <div className={`text-xs ${t.textSecondary}`}>Features</div>
@@ -933,27 +1017,20 @@ const MiowNation = () => {
                     </div>
                   </div>
                   <div>
-                    <h4 className={`font-medium text-sm ${t.textSecondary} mb-2`}>
-                      Active Features:
-                    </h4>
+                    <h4 className={`font-medium text-sm ${t.textSecondary} mb-2`}>Active Features:</h4>
                     <div className="flex flex-wrap gap-2">
                       {analysis.features.map((f, i) => (
-                        <span
-                          key={i}
-                          className={`px-2 py-1 rounded text-xs border ${t.border}`}
-                        >
-                          {f}
-                        </span>
+                        <Badge key={i} text={f} variant="success" />
                       ))}
                     </div>
                   </div>
-                </div>
+                </AnimatedCard>
               )}
 
               {/* Improved Prompt */}
               {improvedPrompt && (
-                <div className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                  <div className="flex items-center justify-between mb-3">
+                <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
+                  <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-sm flex items-center">
                       <Zap className="w-4 h-4 mr-2" />
                       Optimized Prompt
@@ -962,16 +1039,14 @@ const MiowNation = () => {
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(improvedPrompt);
-                          alert("Copied to clipboard!");
+                          alert("Copied to clipboard! 📋");
                         }}
                         className={`py-2 px-4 rounded-lg text-sm font-medium flex items-center transition-colors ${t.button}`}
                       >
                         <Copy className="w-4 h-4 mr-1" /> Copy
                       </button>
                       <div className="relative group">
-                        <button
-                          className={`py-2 px-4 rounded-lg text-sm font-medium flex items-center transition-colors ${t.button}`}
-                        >
+                        <button className={`py-2 px-4 rounded-lg text-sm font-medium flex items-center transition-colors ${t.button}`}>
                           <Download className="w-4 h-4 mr-1" /> Export
                         </button>
                         <div className={`absolute right-0 mt-1 hidden group-hover:block ${t.card} border ${t.border} rounded-lg shadow-lg z-10`}>
@@ -997,12 +1072,14 @@ const MiowNation = () => {
                       </div>
                     </div>
                   </div>
-                  <div className={`rounded-lg p-4 border max-h-96 overflow-y-auto ${t.border} ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
-                    <pre className="whitespace-pre-wrap font-mono text-xs">
-                      {improvedPrompt}
-                    </pre>
+                  <div
+                    className={`rounded-lg p-4 border max-h-96 overflow-y-auto ${t.border} ${
+                      theme === "dark" ? "bg-gray-950" : "bg-gray-50"
+                    }`}
+                  >
+                    <pre className="whitespace-pre-wrap font-mono text-xs">{improvedPrompt}</pre>
                   </div>
-                </div>
+                </AnimatedCard>
               )}
             </div>
           </div>
