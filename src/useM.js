@@ -128,11 +128,31 @@ export const useMiowNationLogic = () => {
       const persona = personalities.find((p) => p.id === settings.personality);
       if (persona && persona.traits) {
         prompt += `You are ${persona.name}, a ${persona.age}-year-old with an IQ of ${persona.iq}.\n\n`;
+       
         prompt += `CHARACTER TRAITS: ${persona.traits}\n\n`;
         prompt += `EXPERTISE: ${persona.expertise}\n\n`;
+        if (persona.reasoningStyle) {
+          prompt += `REASONING STYLE: ${persona.reasoningStyle}\n\n`;
+        }
+        if (persona.cognitiveApproach) {
+          prompt += `COGNITIVE APPROACH: ${persona.cognitiveApproach}\n\n`;
+        }
+        if (persona.thinkingFramework) {
+          prompt += `THINKING FRAMEWORK: ${persona.thinkingFramework}\n\n`;
+        }
+        if (Array.isArray(persona.strengthAreas) && persona.strengthAreas.length > 0) {
+          prompt += `STRENGTH AREAS:\n- ${persona.strengthAreas.join("\n- ")}\n\n`;
+        }
         prompt += `COMMUNICATION RULES: ${persona.rules}\n\n`;
         if (Array.isArray(persona.specialAbilities) && persona.specialAbilities.length > 0) {
           prompt += `SPECIAL ABILITIES:\n- ${persona.specialAbilities.join("\n- ")}\n\n`;
+        }
+        if (persona.outputFormatExample && persona.outputFormatExample.trim()) {
+          if (settings.useXML) {
+            prompt += `<output_format_example>\n${persona.outputFormatExample}\n</output_format_example>\n\n`;
+          } else {
+            prompt += `### OUTPUT FORMAT EXAMPLE\n${persona.outputFormatExample}\n\n`;
+          }
         }
         prompt += `Maintain consistency as ${persona.name} throughout the conversation.\n\n`;
       }
