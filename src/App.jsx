@@ -94,11 +94,11 @@ const ProgressBar = ({ value, max = 100, color = "bg-green-500" }) => {
 // Badge Component
 const Badge = ({ text, variant = "default", icon: Icon }) => {
   const variants = {
-    default: "bg-gray-700 text-gray-100",
-    success: "bg-green-900 text-green-100",
-    warning: "bg-yellow-900 text-yellow-100",
-    error: "bg-red-900 text-red-100",
-    info: "bg-blue-900 text-blue-100",
+    default: "bg-gray-700 text-gray-100 dark:bg-gray-700 dark:text-gray-100",
+    success: "bg-green-900 text-green-100 dark:bg-green-900 dark:text-green-100",
+    warning: "bg-yellow-900 text-yellow-100 dark:bg-yellow-900 dark:text-yellow-100",
+    error: "bg-red-900 text-red-100 dark:bg-red-900 dark:text-red-100",
+    info: "bg-blue-900 text-blue-100 dark:bg-blue-900 dark:text-blue-100",
   };
   return (
     <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${variants[variant]}`}>
@@ -112,10 +112,10 @@ const Badge = ({ text, variant = "default", icon: Icon }) => {
 const StatsWidget = ({ stats, theme }) => {
   const t = theme;
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-4 gap-3`}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
       {stats.map((stat, i) => (
         <AnimatedCard key={i} hover>
-          <div className={`${t.card} rounded-lg border ${t.border} p-4 text-center`}>
+          <div className={`${t.card} rounded-lg border ${t.border} p-4 text-center transition-colors ${t.cardHover}`}>
             <div className={`text-sm ${t.textSecondary} mb-2`}>{stat.label}</div>
             <div className="text-3xl font-bold mb-2">{stat.value}</div>
             {stat.trend && (
@@ -131,14 +131,14 @@ const StatsWidget = ({ stats, theme }) => {
   );
 };
 
-// Collapsible Section
-const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = true }) => {
+// Collapsible Section - FIXED WITH PROPER THEME COLORS
+const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = true, theme }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg transition-colors"
+        className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors font-medium ${theme.cardHover} ${theme.text}`}
       >
         <div className="flex items-center gap-2 font-semibold">
           {Icon && <Icon className="w-4 h-4" />}
@@ -166,7 +166,9 @@ const NETFrameworkVisualizer = ({ theme: t }) => {
           <div
             key={key}
             className={`border-l-4 pl-4 py-3 cursor-pointer transition-all ${
-              expandedLayer === idx ? `border-blue-500 bg-blue-900 bg-opacity-20` : `border-gray-600 hover:border-gray-500`
+              expandedLayer === idx
+                ? `border-blue-500 ${t.cardHover}`
+                : `border-gray-600 dark:border-gray-600 ${t.cardHover}`
             }`}
             onClick={() => setExpandedLayer(expandedLayer === idx ? -1 : idx)}
           >
@@ -254,7 +256,7 @@ const MiowNation = () => {
   const [expandedSidebar, setExpandedSidebar] = useState(true);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  // Enhanced theme configuration with more colors
+  // Enhanced theme configuration with complete color mappings for dark and light modes
   const themes = {
     dark: {
       bg: "bg-gray-950",
@@ -265,30 +267,34 @@ const MiowNation = () => {
       text: "text-gray-100",
       textSecondary: "text-gray-400",
       textMuted: "text-gray-500",
-      input: "bg-gray-900 border-gray-800 text-gray-100 focus:border-blue-600",
-      button: "bg-gray-800 text-gray-100 hover:bg-gray-750",
+      input: "bg-gray-900 border-gray-800 text-gray-100 placeholder-gray-500 focus:border-blue-600 focus:outline-none",
+      button: "bg-gray-800 text-gray-100 hover:bg-gray-700",
       buttonActive: "bg-blue-600 text-white",
       accent: "bg-blue-600 text-white",
       accentHover: "hover:bg-blue-700",
       divider: "border-gray-800",
       gradient: "from-gray-900 to-gray-950",
+      tabInactive: "text-gray-400 hover:text-gray-200",
+      listItemHover: "hover:bg-gray-800",
     },
     light: {
       bg: "bg-white",
       card: "bg-gray-50",
       cardHover: "hover:bg-gray-100",
-      border: "border-gray-200",
-      borderHover: "hover:border-gray-300",
+      border: "border-gray-300",
+      borderHover: "hover:border-gray-400",
       text: "text-gray-900",
       textSecondary: "text-gray-600",
       textMuted: "text-gray-500",
-      input: "bg-white border-gray-300 text-gray-900 focus:border-blue-500",
+      input: "bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none",
       button: "bg-gray-200 text-gray-900 hover:bg-gray-300",
       buttonActive: "bg-blue-600 text-white",
       accent: "bg-blue-600 text-white",
       accentHover: "hover:bg-blue-700",
-      divider: "border-gray-200",
+      divider: "border-gray-300",
       gradient: "from-gray-50 to-white",
+      tabInactive: "text-gray-600 hover:text-gray-900",
+      listItemHover: "hover:bg-gray-100",
     },
   };
 
@@ -325,23 +331,23 @@ const MiowNation = () => {
         className={`fixed top-0 left-0 right-0 h-96 bg-gradient-to-br ${t.gradient} opacity-50 pointer-events-none`}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto p-4 md:p-6">
+      <div className="relative z-10 max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
         {/* Enhanced Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-600 rounded-lg shadow-lg">
-                <Wand2 className="w-8 h-8" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+              <div className="p-2 sm:p-3 bg-blue-600 rounded-lg shadow-lg flex-shrink-0">
+                <Wand2 className="w-6 h-6 sm:w-8 sm:h-8" />
               </div>
-              <div>
-                <h1 className="text-4xl font-black tracking-tight">MiowNation</h1>
-                <p className={`text-sm ${t.textSecondary}`}>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-black tracking-tight truncate">MiowNation</h1>
+                <p className={`text-xs sm:text-sm ${t.textSecondary} truncate`}>
                   Advanced Prompt Engineering Studio with NET Framework
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className={`p-2 rounded-lg transition-colors ${t.button}`}
@@ -358,7 +364,7 @@ const MiowNation = () => {
               </button>
               <button
                 onClick={resetAll}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.button}`}
+                className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors ${t.button}`}
                 title="Reset all settings"
               >
                 Reset
@@ -369,7 +375,7 @@ const MiowNation = () => {
                   navigator.clipboard.writeText(`${location.origin}${location.pathname}#p=${hash}`);
                   alert("Shareable URL copied! 📋");
                 }}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${t.accent} ${t.accentHover}`}
+                className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors ${t.accent} ${t.accentHover}`}
               >
                 Share
               </button>
@@ -397,12 +403,13 @@ const MiowNation = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                    activeTab === tab.id ? t.buttonActive : `${t.textSecondary} hover:${t.text}`
+                  className={`flex items-center gap-2 px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id ? t.buttonActive : `${t.textSecondary} ${t.tabInactive}`
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  {tab.label}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.slice(0, 3)}</span>
                 </button>
               );
             })}
@@ -414,11 +421,11 @@ const MiowNation = () => {
           <div className="space-y-6">
             <NETFrameworkVisualizer theme={t} />
 
-            <div className={`${t.card} rounded-lg border ${t.border} p-6`}>
+            <div className={`${t.card} rounded-lg border ${t.border} p-4 sm:p-6`}>
               <h3 className="font-bold text-lg mb-4">Decision Matrix</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.entries(netFramework.decisionMatrix).map(([task, config]) => (
-                  <div key={task} className={`border ${t.border} rounded-lg p-4`}>
+                  <div key={task} className={`border ${t.border} rounded-lg p-4 ${t.cardHover}`}>
                     <h4 className="font-semibold mb-2 capitalize">{task.replace(/_/g, " ")}</h4>
                     <div className="flex flex-wrap gap-2">
                       {config.techniques.map((tech, i) => (
@@ -437,7 +444,7 @@ const MiowNation = () => {
 
         {/* Presets Tab */}
         {activeTab === "presets" && (
-          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6`}>
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4 sm:p-6`}>
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
               <Cpu className="w-6 h-6" />
               Quick Start Presets
@@ -448,7 +455,7 @@ const MiowNation = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {presetModes.map((mode) => (
-                <AnimatedCard key={mode.id} hover className={`border ${t.border} rounded-lg p-4 transition-all`}>
+                <AnimatedCard key={mode.id} hover className={`border ${t.border} rounded-lg p-4 transition-all ${t.cardHover}`}>
                   <h3 className="font-semibold mb-2 text-lg">{mode.name}</h3>
                   <p className={`text-sm ${t.textSecondary} mb-3 min-h-10`}>{mode.desc}</p>
                   {mode.config.performanceGain && (
@@ -472,7 +479,7 @@ const MiowNation = () => {
 
         {/* Templates Tab */}
         {activeTab === "templates" && (
-          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6`}>
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4 sm:p-6`}>
             <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
               <Sparkles className="w-6 h-6" />
               Quick Templates
@@ -483,9 +490,9 @@ const MiowNation = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {quickTemplates.map((template, i) => (
-                <AnimatedCard key={i} hover className={`border ${t.border} rounded-lg p-4 transition-all`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold flex-1">{template.name}</h3>
+                <AnimatedCard key={i} hover className={`border ${t.border} rounded-lg p-4 transition-all ${t.cardHover}`}>
+                  <div className="flex items-start justify-between mb-3 gap-2">
+                    <h3 className="font-semibold flex-1 text-sm sm:text-base">{template.name}</h3>
                     <Badge text={template.category} variant="info" />
                   </div>
                   <p className={`text-xs font-mono ${t.textSecondary} mb-3 line-clamp-3`}>
@@ -505,7 +512,7 @@ const MiowNation = () => {
 
         {/* Guide Tab */}
         {activeTab === "guide" && (
-          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-6 max-h-[70vh] overflow-y-auto`}>
+          <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4 sm:p-6 max-h-[70vh] overflow-y-auto`}>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <Book className="w-6 h-6" />
               Prompt Engineering Guide
@@ -517,6 +524,7 @@ const MiowNation = () => {
                 title={`${tier.label} - ${tier.desc}`}
                 icon={Target}
                 defaultOpen={tier.id === "tier1"}
+                theme={t}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {techniquesByTier[tier.id].map((tech) => (
@@ -535,15 +543,15 @@ const MiowNation = () => {
               </CollapsibleSection>
             ))}
 
-            <CollapsibleSection title="Master Principles" icon={LightbulbIcon} defaultOpen={true}>
+            <CollapsibleSection title="Master Principles" icon={LightbulbIcon} defaultOpen={true} theme={t}>
               <ul className={`text-sm ${t.textSecondary} space-y-2`}>
-                <li>• <strong>Clarity:</strong> Be specific and unambiguous</li>
-                <li>• <strong>Structure:</strong> Use XML tags and clear formatting</li>
-                <li>• <strong>Verification:</strong> Request reasoning and evidence</li>
-                <li>• <strong>Examples:</strong> Few-shot learning is powerful</li>
-                <li>• <strong>Iteration:</strong> Systematically refine prompts</li>
-                <li>• <strong>Technique Selection:</strong> Match technique to task type</li>
-                <li>• <strong>Combination:</strong> NET Framework combines techniques intelligently</li>
+                <li>• <strong className={t.text}>Clarity:</strong> Be specific and unambiguous</li>
+                <li>• <strong className={t.text}>Structure:</strong> Use XML tags and clear formatting</li>
+                <li>• <strong className={t.text}>Verification:</strong> Request reasoning and evidence</li>
+                <li>• <strong className={t.text}>Examples:</strong> Few-shot learning is powerful</li>
+                <li>• <strong className={t.text}>Iteration:</strong> Systematically refine prompts</li>
+                <li>• <strong className={t.text}>Technique Selection:</strong> Match technique to task type</li>
+                <li>• <strong className={t.text}>Combination:</strong> NET Framework combines techniques intelligently</li>
               </ul>
             </CollapsibleSection>
           </AnimatedCard>
@@ -558,7 +566,7 @@ const MiowNation = () => {
                 !expandedSidebar && "hidden"
               }`}
             >
-              <CollapsibleSection title="Personality" icon={Users} defaultOpen={true}>
+              <CollapsibleSection title="Personality" icon={Users} defaultOpen={true} theme={t}>
                 <select
                   value={settings.personality}
                   onChange={(e) => setSettings({ ...settings, personality: e.target.value })}
@@ -577,7 +585,7 @@ const MiowNation = () => {
                 )}
               </CollapsibleSection>
 
-              <CollapsibleSection title="Tier & Technique" icon={Target} defaultOpen={true}>
+              <CollapsibleSection title="Tier & Technique" icon={Target} defaultOpen={true} theme={t}>
                 <div className="space-y-2">
                   {tiers.map((tier) => (
                     <button
@@ -590,7 +598,7 @@ const MiowNation = () => {
                         })
                       }
                       className={`w-full p-2 rounded-lg text-left text-sm font-medium transition-colors ${
-                        settings.tier === tier.id ? t.buttonActive : t.button
+                        settings.tier === tier.id ? t.buttonActive : `${t.button}`
                       }`}
                     >
                       {tier.label}
@@ -604,7 +612,7 @@ const MiowNation = () => {
                       key={tech.id}
                       onClick={() => setSettings({ ...settings, technique: tech.id })}
                       className={`w-full p-2 rounded-lg text-left text-sm transition-colors ${
-                        settings.technique === tech.id ? t.buttonActive : t.button
+                        settings.technique === tech.id ? t.buttonActive : `${t.button}`
                       }`}
                     >
                       {tech.label}
@@ -613,7 +621,7 @@ const MiowNation = () => {
                 </div>
               </CollapsibleSection>
 
-              <CollapsibleSection title="Reasoning" icon={Brain} defaultOpen={false}>
+              <CollapsibleSection title="Reasoning" icon={Brain} defaultOpen={false} theme={t}>
                 <label className={`flex items-center text-sm ${t.textSecondary}`}>
                   <input
                     type="checkbox"
@@ -621,7 +629,7 @@ const MiowNation = () => {
                     onChange={(e) =>
                       setSettings({ ...settings, reasoningMode: e.target.checked })
                     }
-                    className="mr-2"
+                    className="mr-2 cursor-pointer"
                   />
                   Enable Advanced Reasoning
                 </label>
@@ -642,7 +650,7 @@ const MiowNation = () => {
                 )}
               </CollapsibleSection>
 
-              <CollapsibleSection title="Perspectives" icon={Eye} defaultOpen={false}>
+              <CollapsibleSection title="Perspectives" icon={Eye} defaultOpen={false} theme={t}>
                 <label className={`block text-xs ${t.textSecondary} mb-1`}>Interest Mode</label>
                 <select
                   value={settings.interestMode}
@@ -670,7 +678,7 @@ const MiowNation = () => {
                 </select>
               </CollapsibleSection>
 
-              <CollapsibleSection title="Task & Role" icon={Settings} defaultOpen={false}>
+              <CollapsibleSection title="Task & Role" icon={Settings} defaultOpen={false} theme={t}>
                 <label className={`block text-xs ${t.textSecondary} mb-1`}>Task Type</label>
                 <select
                   value={settings.taskType}
@@ -694,7 +702,7 @@ const MiowNation = () => {
                 />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Tuning" icon={Zap} defaultOpen={false}>
+              <CollapsibleSection title="Tuning" icon={Zap} defaultOpen={false} theme={t}>
                 <label className={`block text-xs ${t.textSecondary} mb-1`}>IQ Level: {settings.iqLevel}</label>
                 <input
                   type="range"
@@ -734,15 +742,15 @@ const MiowNation = () => {
                 </select>
               </CollapsibleSection>
 
-              <CollapsibleSection title="Focus & Constraints" icon={Target} defaultOpen={false}>
+              <CollapsibleSection title="Focus & Constraints" icon={Target} defaultOpen={false} theme={t}>
                 <div className="space-y-2 mb-3">
                   {focusOptions.slice(0, 4).map((f) => (
-                    <label key={f} className={`flex items-center text-sm ${t.textSecondary}`}>
+                    <label key={f} className={`flex items-center text-sm ${t.textSecondary} cursor-pointer`}>
                       <input
                         type="checkbox"
                         checked={settings.focusAreas.includes(f)}
                         onChange={() => toggleFocus(f)}
-                        className="mr-2"
+                        className="mr-2 cursor-pointer"
                       />
                       {f}
                     </label>
@@ -750,12 +758,12 @@ const MiowNation = () => {
                 </div>
                 <div className="space-y-2">
                   {constraintOptions.slice(0, 4).map((c) => (
-                    <label key={c} className={`flex items-center text-sm ${t.textSecondary}`}>
+                    <label key={c} className={`flex items-center text-sm ${t.textSecondary} cursor-pointer`}>
                       <input
                         type="checkbox"
                         checked={settings.constraints.includes(c)}
                         onChange={() => toggleConstraint(c)}
-                        className="mr-2"
+                        className="mr-2 cursor-pointer"
                       />
                       {c}
                     </label>
@@ -763,7 +771,7 @@ const MiowNation = () => {
                 </div>
               </CollapsibleSection>
 
-              <CollapsibleSection title="Saved Prompts" icon={Save} defaultOpen={false}>
+              <CollapsibleSection title="Saved Prompts" icon={Save} defaultOpen={false} theme={t}>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -799,13 +807,13 @@ const MiowNation = () => {
                     .map((saved) => (
                       <div
                         key={saved.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs ${t.border} hover:bg-gray-800 transition-colors`}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs ${t.border} ${t.listItemHover} transition-colors`}
                       >
-                        <div className="flex-1">
-                          <div className="font-medium">{saved.name}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{saved.name}</div>
                           <div className={`${t.textMuted} text-xs`}>{saved.timestamp}</div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-shrink-0">
                           <button
                             onClick={() => loadPrompt(saved)}
                             className={`px-2 py-1 rounded text-xs transition-colors ${t.button}`}
@@ -814,7 +822,7 @@ const MiowNation = () => {
                           </button>
                           <button
                             onClick={() => deletePrompt(saved.id)}
-                            className="text-red-500 hover:text-red-600"
+                            className="text-red-500 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -852,11 +860,11 @@ const MiowNation = () => {
                     <ProgressBar value={Math.min(inputPrompt.length, 500)} max={500} />
                   </div>
                 )}
-                <div className="flex gap-2 mt-3">
+                <div className="flex gap-2 mt-3 flex-wrap">
                   <button
                     onClick={improvePrompt}
                     disabled={!inputPrompt.trim()}
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${t.accent} ${t.accentHover}`}
+                    className={`flex-1 min-w-[150px] py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${t.accent} ${t.accentHover}`}
                   >
                     <Zap className="w-4 h-4 mr-2" />
                     Generate Optimized Prompt
@@ -923,7 +931,7 @@ const MiowNation = () => {
                   </div>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {examples.map((ex, i) => (
-                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border}`}>
+                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border} ${t.cardHover}`}>
                         <div>
                           <strong>In:</strong> {ex.input}
                         </div>
@@ -932,7 +940,7 @@ const MiowNation = () => {
                         </div>
                         <button
                           onClick={() => removeExample(i)}
-                          className="text-red-500 text-xs mt-1 hover:text-red-600"
+                          className="text-red-500 text-xs mt-1 hover:text-red-600 transition-colors"
                         >
                           Remove
                         </button>
@@ -974,13 +982,13 @@ const MiowNation = () => {
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {variables.map((v, i) => (
-                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border}`}>
+                      <div key={i} className={`p-2 rounded-lg border text-sm ${t.border} ${t.cardHover}`}>
                         <div>
                           <strong>{`{${v.name}}`}:</strong> {v.description}
                         </div>
                         <button
                           onClick={() => removeVariable(i)}
-                          className="text-red-500 text-xs mt-1 hover:text-red-600"
+                          className="text-red-500 text-xs mt-1 hover:text-red-600 transition-colors"
                         >
                           Remove
                         </button>
@@ -1030,12 +1038,12 @@ const MiowNation = () => {
               {/* Improved Prompt */}
               {improvedPrompt && (
                 <AnimatedCard className={`${t.card} rounded-lg border ${t.border} p-4`}>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <h3 className="font-semibold text-sm flex items-center">
                       <Zap className="w-4 h-4 mr-2" />
                       Optimized Prompt
                     </h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(improvedPrompt);
@@ -1077,7 +1085,7 @@ const MiowNation = () => {
                       theme === "dark" ? "bg-gray-950" : "bg-gray-50"
                     }`}
                   >
-                    <pre className="whitespace-pre-wrap font-mono text-xs">{improvedPrompt}</pre>
+                    <pre className={`whitespace-pre-wrap font-mono text-xs ${t.text}`}>{improvedPrompt}</pre>
                   </div>
                 </AnimatedCard>
               )}
