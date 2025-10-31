@@ -131,6 +131,9 @@ export const useMiowNationLogic = () => {
         prompt += `CHARACTER TRAITS: ${persona.traits}\n\n`;
         prompt += `EXPERTISE: ${persona.expertise}\n\n`;
         prompt += `COMMUNICATION RULES: ${persona.rules}\n\n`;
+        if (Array.isArray(persona.specialAbilities) && persona.specialAbilities.length > 0) {
+          prompt += `SPECIAL ABILITIES:\n- ${persona.specialAbilities.join("\n- ")}\n\n`;
+        }
         prompt += `Maintain consistency as ${persona.name} throughout the conversation.\n\n`;
       }
     } else if (settings.roleAssignment) {
