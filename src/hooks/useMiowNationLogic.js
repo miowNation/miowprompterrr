@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import toast from 'react-hot-toast';
 import {
   interestModes,
   personalities,
@@ -13,14 +14,24 @@ import {
   focusOptions,
   constraintOptions,
   quickTemplates
-} from "./constants";
+} from "../constants";
+import { usePromptHistory, usePromptScorer, usePromptLibrary } from "./usePromptFeatures";
 
 export const useMiowNationLogic = () => {
-  const [inputPrompt, setInputPrompt] = useState("");
+  // Initialize state from localStorage
+  const [inputPrompt, setInputPrompt] = useState(() => {
+    try {
+      return localStorage.getItem('miow_draft_prompt') || "";
+    } catch { return ""; }
+  });
   const [improvedPrompt, setImprovedPrompt] = useState("");
   const [analysis, setAnalysis] = useState(null);
   const [activeTab, setActiveTab] = useState("builder");
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('miow_theme') || "dark";
+    } catch { return "dark"; }
+  });
   const fileInputRef = useRef(null);
 
   const [settings, setSettings] = useState({
@@ -60,10 +71,21 @@ export const useMiowNationLogic = () => {
   const [newVariable, setNewVariable] = useState({ name: "", description: "" });
   const [customCategories, setCustomCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
-  const [savedPrompts, setSavedPrompts] = useState([]);
+  const [savedPrompts, setSavedPrompts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('miow_saved_prompts');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [promptName, setPromptName] = useState("");
   const [promptTags, setPromptTags] = useState("");
   const [savedSearch, setSavedSearch] = useState("");
+
+  // Initialize new feature hooks
+  const promptHistory = usePromptHistory();
+  const promptScorer = usePromptScorer();
+  const promptLibrary = usePromptLibrary();
+
 
   // ---------- URL Share/Load ----------
   const serializeState = () => {
@@ -114,6 +136,41 @@ export const useMiowNationLogic = () => {
     }
   }, [inputPrompt, settings, examples, variables, customCategories]);
 
+  // Persist savedPrompts to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('miow_saved_prompts', JSON.stringify(savedPrompts));
+    } catch (e) {
+      console.error('Failed to save prompts to localStorage:', e);
+    }
+  }, [savedPrompts]);
+
+  // Persist theme to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('miow_theme', theme);
+    } catch (e) {
+      console.error('Failed to save theme to localStorage:', e);
+    }
+  }, [theme]);
+
+  // Auto-save draft prompt (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        if (inputPrompt) {
+          localStorage.setItem('miow_draft_prompt', inputPrompt);
+        } else {
+          localStorage.removeItem('miow_draft_prompt');
+        }
+      } catch (e) {
+        console.error('Failed to save draft:', e);
+      }
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(timer);
+  }, [inputPrompt]);
+
   const loadPresetMode = (modeId) => {
     const mode = presetModes.find((m) => m.id === modeId);
     if (mode) {
@@ -128,7 +185,7 @@ export const useMiowNationLogic = () => {
       const persona = personalities.find((p) => p.id === settings.personality);
       if (persona && persona.traits) {
         prompt += `You are ${persona.name}, a ${persona.age}-year-old with an IQ of ${persona.iq}.\n\n`;
-       
+
         prompt += `CHARACTER TRAITS: ${persona.traits}\n\n`;
         prompt += `EXPERTISE: ${persona.expertise}\n\n`;
         if (persona.reasoningStyle) {
@@ -290,9 +347,8 @@ export const useMiowNationLogic = () => {
       } else {
         prompt += `### EXAMPLES\n`;
         examples.slice(0, settings.exampleCount).forEach((ex, i) => {
-          prompt += `Example ${i + 1}:\nInput: ${ex.input}\nOutput: ${
-            ex.output
-          }\n\n`;
+          prompt += `Example ${i + 1}:\nInput: ${ex.input}\nOutput: ${ex.output
+            }\n\n`;
         });
       }
     }
@@ -437,18 +493,52 @@ export const useMiowNationLogic = () => {
     if (settings.perspectiveMode !== "none") features.push("Perspective");
     if (parseInt(settings.iqLevel) >= 140) features.push("High IQ");
 
-    setAnalysis({
+    const analysisData = {
       score,
       features,
       tier: settings.tier,
       technique: settings.technique,
       wordCount: improved.split(/\s+/).length,
       characterCount: improved.length,
+    };
+
+    // Use the new prompt scorer for additional quality assessment
+    const qualityScore = promptScorer.scorePrompt(improved, settings, analysisData);
+    const suggestions = promptScorer.getSuggestions(improved, settings, qualityScore);
+
+    setAnalysis({
+      ...analysisData,
+      qualityScore,
+      suggestions,
+    });
+
+    // Add to history
+    promptHistory.addToHistory(improved, settings);
+
+    // Show engaging success toast
+    toast.success('Prompt generated successfully!', {
+      icon: '⚡',
+      style: {
+        background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)',
+        color: '#FFFFFF',
+        border: '2px solid #60A5FA',
+        fontWeight: '600',
+      },
+      duration: 3500,
     });
   };
 
+
   const loadQuickTemplate = (template) => {
     setInputPrompt(template);
+    toast.success('Template loaded successfully!', {
+      icon: '📄',
+      style: {
+        background: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+        color: '#FFFFFF',
+        border: '2px solid #A78BFA',
+      },
+    });
   };
 
   const addExample = () => {
@@ -500,12 +590,32 @@ export const useMiowNationLogic = () => {
 
   const savePrompt = () => {
     if (!promptName.trim()) {
-      alert("Please enter a prompt name");
+      toast.error('Please enter a prompt name', {
+        icon: '⚠️',
+        style: {
+          background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+          color: '#FFFFFF',
+          border: '2px solid #F87171',
+        },
+      });
       return;
     }
+
+    if (!inputPrompt.trim() && !improvedPrompt.trim()) {
+      toast.error('Please generate a prompt before saving', {
+        icon: '⚠️',
+        style: {
+          background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+          color: '#FFFFFF',
+          border: '2px solid #F87171',
+        },
+      });
+      return;
+    }
+
     const saved = {
       id: Date.now(),
-      name: promptName,
+      name: promptName.trim(),
       timestamp: new Date().toLocaleString(),
       input: inputPrompt,
       improved: improvedPrompt,
@@ -518,9 +628,20 @@ export const useMiowNationLogic = () => {
         .map((t) => t.trim())
         .filter((t) => t.length > 0),
     };
+
     setSavedPrompts([...savedPrompts, saved]);
     setPromptName("");
     setPromptTags("");
+
+    // Show success feedback with toast
+    toast.success(`Prompt "${saved.name}" saved successfully!`, {
+      icon: '💾',
+      style: {
+        background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+        color: '#FFFFFF',
+        border: '2px solid #34D399',
+      },
+    });
   };
 
   const loadPrompt = (saved) => {
@@ -603,7 +724,14 @@ export const useMiowNationLogic = () => {
         if (data.variables) setVariables(data.variables);
         if (data.categories) setCustomCategories(data.categories);
       } catch (error) {
-        alert("Error importing file: " + error.message);
+        toast.error("Error importing file: " + error.message, {
+          icon: '❌',
+          style: {
+            background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+            color: '#FFFFFF',
+            border: '2px solid #F87171',
+          },
+        });
       }
     };
     reader.readAsText(file);
@@ -707,5 +835,10 @@ export const useMiowNationLogic = () => {
     exportPrompt,
     importPrompt,
     resetAll,
+
+    // New feature hooks
+    promptHistory,
+    promptScorer,
+    promptLibrary,
   };
 };
