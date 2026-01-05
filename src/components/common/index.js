@@ -6,3 +6,6 @@ export { default as Badge } from './Badge.jsx';
 export { default as CollapsibleSection } from './CollapsibleSection.jsx';
 export { default as StatsWidget } from './StatsWidget.jsx';
 export { default as ErrorBoundary } from './ErrorBoundary.jsx';
+export { default as Switch } from './Switch.jsx';
+export { default as SettingsPanel } from './SettingsPanel.jsx';
+
